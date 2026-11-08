@@ -29,6 +29,8 @@ function AINebula({active=false}:{active?:boolean}) {
     <Animated.View style={[s.nebulaHalo,{opacity:glow,transform:[{scale}]}]}/>
     <Animated.View style={[s.nebulaCloud,s.nebulaCloudA,{transform:[{rotate:spin},{scale}]}]}/>
     <Animated.View style={[s.nebulaCloud,s.nebulaCloudB,{transform:[{rotate:spin},{scale:scale}]}]}/>
+    <Animated.View style={[s.nebulaCloud,s.nebulaCloudC,{transform:[{rotate:spin},{scale}]}]}/>
+    <Animated.View style={[s.nebulaCloud,s.nebulaCloudD,{transform:[{rotate:spin},{scale}]}]}/>
     <Animated.View style={[s.nebulaCore,{opacity:glow,transform:[{scale}]}]}/>
     <View style={s.nebulaSpark}><Text style={s.nebulaGlyph}>✦</Text></View>
   </View>;
@@ -171,6 +173,8 @@ const s=StyleSheet.create({
  nebulaCloud:{position:'absolute',width:150,height:150,borderRadius:100,borderWidth:20,shadowRadius:30},
  nebulaCloudA:{borderColor:'#49d9d0',backgroundColor:'rgba(33,128,198,0.32)',shadowColor:'#52d8ff',shadowOpacity:.8},
  nebulaCloudB:{width:116,height:116,borderWidth:17,borderColor:'#a66aff',backgroundColor:'rgba(112,67,190,0.25)',shadowColor:'#a66aff',shadowOpacity:.8},
+ nebulaCloudC:{width:138,height:82,borderWidth:15,borderColor:'#ee83cb',backgroundColor:'rgba(225,95,184,0.22)',shadowColor:'#f17fd5',shadowOpacity:.85,top:18,left:-20},
+ nebulaCloudD:{width:74,height:126,borderWidth:14,borderColor:'#67a8ff',backgroundColor:'rgba(65,133,230,0.22)',shadowColor:'#62b8ff',shadowOpacity:.85,top:-12,right:-18},
  nebulaCore:{position:'absolute',width:76,height:76,borderRadius:50,backgroundColor:'#8feaff',shadowColor:'#5de0ff',shadowOpacity:1,shadowRadius:32,elevation:20},
  nebulaSpark:{width:48,height:48,alignItems:'center',justifyContent:'center'},
  nebulaGlyph:{fontSize:34,color:'#fff',textShadowColor:'#7beaff',textShadowRadius:18},
