@@ -29,5 +29,36 @@ model-viewer::part(default-progress-mask){background:#152342}
 </model-viewer></main>
 <footer class="footer"><div><div class="tag">SELECTED VEHICLE</div><div class="name" id="vehicleName">Concept Car</div><div class="tag" id="modelStatus" style="margin-top:5px">LOADING 3D MODEL…</div></div><div class="help">DRAG TO ROTATE<br>SCROLL / PINCH TO ZOOM</div></footer>
 <div class="credit">3D sample asset: Khronos Group · Car Concept · CC BY 4.0. This is a shared preview model pending individual vehicle assets.</div>
-<script>const q=new URLSearchParams(location.search),car=document.getElementById('car'),status=document.getElementById('modelStatus');document.getElementById('vehicleName').textContent=q.get('name')||'Concept Car';car.addEventListener('load',()=>status.textContent='3D MODEL READY · DRAG TO INSPECT');car.addEventListener('error',()=>{status.textContent='PRIMARY MODEL FAILED · LOADING FALLBACK';if(!car.dataset.fallback){car.dataset.fallback='1';car.src='https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ClearCoatCarPaint/glTF-Binary/ClearCoatCarPaint.glb';}else status.textContent='MODEL UNAVAILABLE · CHECK NETWORK / GLB SOURCE';});</script>
+<script>
+const q=new URLSearchParams(location.search),car=document.getElementById('car'),status=document.getElementById('modelStatus');
+const id=q.get('id')||'sports-coupe';
+const models={
+ 'sports-coupe':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb','Concept sports car'],
+ 'roadster':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb','Concept sports car'],
+ 'family-suv':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb','SUV category preview'],
+ 'family-sedan':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb','Sedan category preview'],
+ 'convertible':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb','Convertible category preview'],
+ 'mini-ev':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ToyCar/glTF-Binary/ToyCar.glb','Compact electric category preview'],
+ 'hatchback':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ToyCar/glTF-Binary/ToyCar.glb','Compact category preview'],
+ 'golf-cart':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ToyCar/glTF-Binary/ToyCar.glb','Small utility category preview'],
+ 'ice-cream-truck':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb','Commercial truck category preview'],
+ 'delivery-van':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb','Delivery vehicle category preview'],
+ 'garbage-truck':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb','Heavy truck category preview'],
+ 'tow-truck':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb','Recovery truck category preview'],
+ 'monster-truck':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb','Off-road vehicle category preview'],
+ 'rescue-vehicle':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb','Emergency vehicle category preview'],
+ 'police-sedan':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb','Patrol car category preview'],
+ 'taxi':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb','Taxi category preview'],
+ 'family-minivan':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb','Van category preview'],
+ 'limousine':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb','Luxury car category preview'],
+ 'camper':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb','Camper category preview'],
+ 'pickup':['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb','Pickup category preview']
+};
+const chosen=models[id]||models['sports-coupe'];
+document.getElementById('vehicleName').textContent=q.get('name')||'Vehicle';
+document.querySelector('.credit').textContent=chosen[1]+' · Khronos glTF Sample Assets. Some entries currently share category preview geometry; individual licensed models are still required for a true 20-car garage.';
+car.src=chosen[0];
+car.addEventListener('load',()=>status.textContent='3D MODEL READY · DRAG TO INSPECT');
+car.addEventListener('error',()=>{status.textContent='MODEL LOAD FAILED · CHECK ASSET URL';});
+</script>
 </body></html>
