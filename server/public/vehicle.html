@@ -27,7 +27,7 @@ model-viewer::part(default-progress-mask){background:#152342}
  alt="Interactive 3D concept car" camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1.2" exposure="1.15" camera-orbit="35deg 68deg 4.2m" min-camera-orbit="auto 20deg 2.3m" max-camera-orbit="auto 140deg 8m" interaction-prompt="auto" touch-action="pan-y">
 <div slot="poster" style="color:#9bb3d6;font-size:12px">Loading 3D vehicle…</div>
 </model-viewer></main>
-<footer class="footer"><div><div class="tag">SELECTED VEHICLE</div><div class="name" id="vehicleName">Concept Car</div></div><div class="help">DRAG TO ROTATE<br>SCROLL / PINCH TO ZOOM</div></footer>
+<footer class="footer"><div><div class="tag">SELECTED VEHICLE</div><div class="name" id="vehicleName">Concept Car</div><div class="tag" id="modelStatus" style="margin-top:5px">LOADING 3D MODEL…</div></div><div class="help">DRAG TO ROTATE<br>SCROLL / PINCH TO ZOOM</div></footer>
 <div class="credit">3D sample asset: Khronos Group · Car Concept · CC BY 4.0. This is a shared preview model pending individual vehicle assets.</div>
-<script>const q=new URLSearchParams(location.search);document.getElementById('vehicleName').textContent=q.get('name')||'Concept Car';</script>
+<script>const q=new URLSearchParams(location.search),car=document.getElementById('car'),status=document.getElementById('modelStatus');document.getElementById('vehicleName').textContent=q.get('name')||'Concept Car';car.addEventListener('load',()=>status.textContent='3D MODEL READY · DRAG TO INSPECT');car.addEventListener('error',()=>{status.textContent='PRIMARY MODEL FAILED · LOADING FALLBACK';if(!car.dataset.fallback){car.dataset.fallback='1';car.src='https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ClearCoatCarPaint/glTF-Binary/ClearCoatCarPaint.glb';}else status.textContent='MODEL UNAVAILABLE · CHECK NETWORK / GLB SOURCE';});</script>
 </body></html>
