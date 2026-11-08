@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pin Drive · 3D Vehicle Studio</title>
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080f20;color:#f3f6ff;font-family:Inter,system-ui,Segoe UI,sans-serif}
+body{display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 42%,#18294a 0,#0b152b 48%,#070d1c 100%)}
+.top{height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid #26395d;background:#0b1428dd}
+.brand{font-weight:900;letter-spacing:2px}.brand span{color:#68e1d2}.tag{font-size:9px;letter-spacing:1.5px;color:#8fa5ca}
+.stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.glow{position:absolute;width:min(65vw,420px);height:min(65vw,420px);border-radius:50%;background:radial-gradient(circle,#2c75a855 0,#5b56a833 38%,transparent 70%);filter:blur(22px);animation:breathe 5s ease-in-out infinite alternate}
+model-viewer{position:relative;width:100%;height:100%;--poster-color:transparent;background:transparent;outline:none}
+model-viewer::part(default-progress-bar){background:#68e1d2;height:3px}
+model-viewer::part(default-progress-mask){background:#152342}
+.footer{padding:10px 16px 12px;border-top:1px solid #26395d;background:#0b1428e8;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.name{font-size:14px;font-weight:800}.help{font-size:9px;letter-spacing:1px;color:#8fa5ca;text-align:right}
+.credit{font-size:9px;color:#7187aa;padding:0 16px 8px;background:#0b1428e8}
+@keyframes breathe{from{transform:scale(.85);opacity:.45}to{transform:scale(1.12);opacity:.9}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">PIN <span>DRIVE</span></div><div class="tag">VEHICLE INSPECTION · 3D</div></header>
+<main class="stage"><div class="glow"></div>
+<model-viewer id="car" src="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb"
+ alt="Interactive 3D concept car" camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1.2" exposure="1.15" environment-image="https://modelviewer.dev/shared-assets/environments/aircraft_workshop_1k.hdr" camera-orbit="35deg 68deg 4.2m" min-camera-orbit="auto 20deg 2.3m" max-camera-orbit="auto 140deg 8m" interaction-prompt="auto" touch-action="pan-y">
+<div slot="poster" style="color:#9bb3d6;font-size:12px">Loading 3D vehicle…</div>
+</model-viewer></main>
+<footer class="footer"><div><div class="tag">SELECTED VEHICLE</div><div class="name" id="vehicleName">Concept Car</div></div><div class="help">DRAG TO ROTATE<br>SCROLL / PINCH TO ZOOM</div></footer>
+<div class="credit">3D sample asset: Khronos Group · Car Concept · CC BY 4.0. This is a shared preview model pending individual vehicle assets.</div>
+<script>const q=new URLSearchParams(location.search);document.getElementById('vehicleName').textContent=q.get('name')||'Concept Car';</script>
+</body></html>
