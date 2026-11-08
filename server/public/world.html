@@ -72,7 +72,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
 <script>
 (async()=>{
  const $=id=>document.getElementById(id),status=$('status'),params=new URLSearchParams(location.search);
- let viewer,vehiclePrimitive=null,buildingRelief=[],weatherLayer=null,currentBase='aerial',currentTerrain='world',currentWeather='none',weatherAlpha=Math.max(0,Math.min(1,Number(params.get('opacity')||.85))),ionToken='';
+ let viewer,vehiclePrimitive=null,buildingRelief=[],weatherLayer=null,currentBase='aerial',currentTerrain='world',currentWeather='none',weatherAlpha=Math.max(0,Math.min(1,Number(params.get('opacity')||.85))),ionToken='',apiBase=(params.get('apiBase')||location.origin).replace(/\\/$/,'');
  let hasPlayerPosition=params.has('lat')&&params.has('lon')&&Number.isFinite(Number(params.get('lat')))&&Number.isFinite(Number(params.get('lon'))),playerLat=Number(params.get('lat'))||0,playerLon=Number(params.get('lon'))||0,vehiclePosition=null,flagBillboard=null,flagPole=null,mapViewer=null,voiceSocket=null,voiceRecorder=null,voiceStream=null,voiceChunks=[],voiceListening=false,localMinutes=720,timeTouched=false;
  const pad=n=>String(n).padStart(2,'0');
  function updateLocalClock(){
@@ -107,9 +107,9 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  async function initMiniMap(){
   if(mapViewer){mapViewer.resize();mapViewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(playerLon,playerLat,850000),duration:.5});return}
   try{
-   mapViewer=new Cesium.Viewer('mapMini',{animation:false,timeline:false,baseLayerPicker:true,geocoder:false,homeButton:true,sceneModePicker:true,navigationHelpButton:true,infoBox:false,selectionIndicator:false,baseLayer:false,terrainProvider:new Cesium.EllipsoidTerrainProvider(),sceneMode:Cesium.SceneMode.SCENE3D});
+   mapViewer=new Cesium.Viewer('mapMini',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:true,sceneModePicker:true,navigationHelpButton:true,infoBox:false,selectionIndicator:false,baseLayer:false,terrainProvider:new Cesium.EllipsoidTerrainProvider(),sceneMode:Cesium.SceneMode.SCENE3D});
    if(ionToken){try{mapViewer.terrainProvider=await Cesium.createWorldTerrainAsync()}catch(e){console.warn('Mini map terrain unavailable',e)}}
-   mapViewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',credit:'© OpenStreetMap'}));
+   const mainLayer=viewer.imageryLayers.length?viewer.imageryLayers.get(0):null;\n   const mapProvider=mainLayer?.imageryProvider||new Cesium.UrlTemplateImageryProvider({url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',credit:'Esri World Imagery'});\n   mapViewer.imageryLayers.addImageryProvider(mapProvider);
    mapViewer.entities.add({id:'player-marker',position:Cesium.Cartesian3.fromDegrees(playerLon,playerLat),point:{pixelSize:13,color:Cesium.Color.fromCssColorString('#62e6c5'),outlineColor:Cesium.Color.WHITE,outlineWidth:2},label:{text:'YOU',font:'12px sans-serif',pixelOffset:new Cesium.Cartesian2(0,-20),fillColor:Cesium.Color.WHITE,showBackground:true}});
    mapViewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(playerLon,playerLat,850000),duration:0});
    mapViewer.screenSpaceEventHandler.setInputAction(m=>{
@@ -127,7 +127,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  }
  async function updateCountryFlag(){
   try{
-   const r=await fetch(window.location.origin+'/api/geocode/reverse?lat='+encodeURIComponent(playerLat)+'&lon='+encodeURIComponent(playerLon));
+   const r=await fetch(apiBase+'/api/geocode/reverse?lat='+encodeURIComponent(playerLat)+'&lon='+encodeURIComponent(playerLon));
    if(!r.ok)throw new Error('Country lookup API HTTP '+r.status);
    const g=await r.json(),serviceCode=String(g.countryCode||'').trim().toUpperCase();
    if(!/^[A-Z]{2}$/.test(serviceCode))throw new Error('No country at current coordinates');
@@ -278,7 +278,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
   const query='[out:json][timeout:25];(way["building"]('+south+','+west+','+north+','+east+'););out body geom;';
   try{
    setStatus('Sampling terrain and building heights…');
-   const response=await fetch(window.location.origin+'/api/buildings?lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon));
+   const response=await fetch(apiBase+'/api/buildings?lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon));
    if(!response.ok)throw new Error('Building data API HTTP '+response.status);
    const data=await response.json();
    const ways=(data.elements||[]).filter(w=>w.type==='way'&&w.geometry&&w.geometry.length>=4).slice(0,45);
@@ -368,7 +368,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  }
  function globalView(){viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(0,15,24500000),orientation:{heading:0,pitch:-Cesium.Math.PI_OVER_TWO,roll:0},duration:1.2})}
  try{
-  const cfg=await fetch('/api/config').then(r=>{if(!r.ok)throw Error('Config unavailable');return r.json()});
+  const cfg=await fetch(apiBase+'/api/config').then(r=>{if(!r.ok)throw Error('Config unavailable');return r.json()});
   window.pinDriveConfig=cfg;ionToken=cfg.cesiumIonToken||'';
   if(ionToken)Cesium.Ion.defaultAccessToken=ionToken;
   const terrainProvider=new Cesium.EllipsoidTerrainProvider();
