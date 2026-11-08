@@ -101,6 +101,9 @@ input[type=range]{width:100%;accent-color:#62e6c5}
     const p=await Cesium.createWorldTerrainAsync({requestVertexNormals:true,requestWaterMask:true});
     viewer.terrainProvider=p;
     setStatus('Cesium World Terrain enabled');
+   }else if(kind==='arcgis'){
+    viewer.terrainProvider=await Cesium.ArcGISTiledElevationTerrainProvider.fromUrl('https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer');
+    setStatus('ArcGIS World Elevation terrain enabled');
    }else{
     viewer.terrainProvider=new Cesium.EllipsoidTerrainProvider();
     setStatus(kind==='world'?'World Terrain needs CESIUM_ION_TOKEN · using ellipsoid':'Ellipsoid terrain enabled');
