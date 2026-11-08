@@ -1,0 +1,13 @@
+{
+  "name": "pin-drive",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["server", "mobile"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace server\" \"npm run start --workspace mobile\"",
+    "build": "npm run build --workspace mobile",
+    "start": "npm start --workspace server"
+  },
+  "devDependencies": { "concurrently": "^9.1.2" },
+  "engines": { "node": ">=20" }
+}
