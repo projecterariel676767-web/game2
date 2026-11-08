@@ -166,7 +166,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
     const width=(Math.max(...xs)-Math.min(...xs))*111320*Math.cos(center.lat*Math.PI/180);
     const depth=(Math.max(...ys)-Math.min(...ys))*110540;
     const radius=Math.max(9,Math.min(55,Math.max(width,depth)*0.8));
-    const mound=viewer.entities.add({name:'Raised terrain under building · '+h.toFixed(1)+' m',ellipse:{coordinates:Cesium.Cartesian3.fromDegrees(center.lon,center.lat,ground),semiMajorAxis:radius,semiMinorAxis:Math.max(7,radius*.72),height:ground+Math.min(8+h*.7,45),extrudedHeight:ground,material:Cesium.Color.fromCssColorString('#a66c3e').withAlpha(.58),outline:true,outlineColor:Cesium.Color.fromCssColorString('#f0c58b').withAlpha(.75),outlineWidth:1}});
+    const mound=viewer.entities.add({name:'Raised terrain under building · '+h.toFixed(1)+' m',position:Cesium.Cartesian3.fromDegrees(center.lon,center.lat,ground),ellipse:{semiMajorAxis:radius,semiMinorAxis:Math.max(7,radius*.72),height:ground,extrudedHeight:ground+Math.min(8+h*.7,45),material:Cesium.Color.fromCssColorString('#a66c3e').withAlpha(.58),outline:true,outlineColor:Cesium.Color.fromCssColorString('#f0c58b').withAlpha(.75),outlineWidth:1}});
     buildingRelief.push(mound);added++;
    }
    setStatus('Building relief overlay · '+added+' structures · sampled terrain + raised building mounds');
