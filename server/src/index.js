@@ -99,52 +99,47 @@ app.post('/api/ai/image', requireAuth, async (req, res) => {
 // Server-side geodata proxy: keeps third-party requests out of the browser (CORS-safe).
 const geoCache = new Map();
 app.get('/api/geocode/reverse', async (req, res) => {
-  const lat = Number(req.query.lat), lon = Number(req.query.lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180) return res.status(400).json({ error: 'Valid lat and lon are required.' });
-  const key = 'reverse:' + lat.toFixed(4) + ':' + lon.toFixed(4);
-  const cached = geoCache.get(key); if (cached && cached.expires > Date.now()) return res.json(cached.data);
-  try {
-    let result = null;
-    const bd = new URL('https://api.bigdatacloud.net/data/reverse-geocode-client');
-    bd.searchParams.set('latitude', lat); bd.searchParams.set('longitude', lon); bd.searchParams.set('localityLanguage', 'en');
-    try {
-      const r = await fetch(bd, { headers: { 'User-Agent': 'PinDrive/1.0' }, signal: AbortSignal.timeout(10000) });
-      if (r.ok) { const d = await r.json(); if (d.countryCode) result = { countryCode: String(d.countryCode).toUpperCase(), countryName: d.countryName || '', city: d.city || d.locality || '', locality: d.locality || d.city || '' }; }
-    } catch (e) { console.warn('BigDataCloud reverse geocode failed:', e.message); }
-    if (!result) {
-      const url = new URL('https://nominatim.openstreetmap.org/reverse');
-      url.searchParams.set('lat', lat); url.searchParams.set('lon', lon); url.searchParams.set('format', 'jsonv2');
-      const r = await fetch(url, { headers: { 'User-Agent': 'PinDrive/1.0 (geodata contact: support)' }, signal: AbortSignal.timeout(12000) });
-      if (!r.ok) throw new Error('Nominatim HTTP ' + r.status);
-      const d = await r.json(), a = d.address || {};
-      const countryCode = String(a.country_code || '').toUpperCase();
-      result = { countryCode, countryName: a.country || '', city: a.city || a.town || a.village || a.hamlet || '', locality: a.suburb || a.neighbourhood || a.city || a.town || '' };
-    }
-    geoCache.set(key, { data: result, expires: Date.now() + 6 * 60 * 60 * 1000 });
-    res.json(result);
-  } catch (error) { console.error('Reverse geocoding failed:', error.message); res.status(502).json({ error: 'Reverse geocoding providers are unavailable.' }); }
+  const lat=Number(req.query.lat),lon=Number(req.query.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return res.status(400).json({error:'Valid lat and lon are required.'});
+  const key='reverse:'+lat.toFixed(4)+':'+lon.toFixed(4),cached=geoCache.get(key);
+  if(cached&&cached.expires>Date.now())return res.json(cached.data);
+  let lastError;
+  try{
+    const url=new URL('https://photon.komoot.io/reverse');url.searchParams.set('lat',lat);url.searchParams.set('lon',lon);
+    const r=await fetch(url,{headers:{'User-Agent':'PinDrive/1.0'},signal:AbortSignal.timeout(12000)});
+    if(!r.ok)throw new Error('Photon HTTP '+r.status);
+    const d=await r.json(),p=d.features?.[0]?.properties||{};
+    if(p.countrycode){const result={countryCode:String(p.countrycode).toUpperCase(),countryName:p.country||'',city:p.city||p.town||p.village||'',locality:p.district||p.suburb||p.city||p.town||''};geoCache.set(key,{data:result,expires:Date.now()+21600000});return res.json(result)}
+    throw new Error('Photon returned no country');
+  }catch(e){lastError=e;console.warn('Photon reverse geocode failed:',e.message)}
+  try{
+    const url=new URL('https://nominatim.openstreetmap.org/reverse');url.searchParams.set('lat',lat);url.searchParams.set('lon',lon);url.searchParams.set('format','jsonv2');
+    const r=await fetch(url,{headers:{'User-Agent':'PinDrive/1.0 contact: support'},signal:AbortSignal.timeout(12000)});
+    if(!r.ok)throw new Error('Nominatim HTTP '+r.status);
+    const d=await r.json(),a=d.address||{},result={countryCode:String(a.country_code||'').toUpperCase(),countryName:a.country||'',city:a.city||a.town||a.village||a.hamlet||'',locality:a.suburb||a.neighbourhood||a.city||a.town||''};
+    if(!result.countryCode)throw new Error('Nominatim returned no country');
+    geoCache.set(key,{data:result,expires:Date.now()+21600000});return res.json(result);
+  }catch(e){lastError=e;console.error('Reverse geocoding providers failed:',e.message);return res.status(502).json({error:'Reverse geocoding providers unavailable.',detail:lastError.message})}
 });
 
-app.get('/api/buildings', async (req, res) => {
-  const lat = Number(req.query.lat), lon = Number(req.query.lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180) return res.status(400).json({ error: 'Valid lat and lon are required.' });
-  const south=lat-0.004, west=lon-0.005, north=lat+0.004, east=lon+0.005;
-  const key='buildings:'+lat.toFixed(3)+':'+lon.toFixed(3);
-  const cached=geoCache.get(key); if(cached&&cached.expires>Date.now()) return res.json(cached.data);
+app.get('/api/buildings', async (req,res)=>{
+  const lat=Number(req.query.lat),lon=Number(req.query.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return res.status(400).json({error:'Valid lat and lon are required.'});
+  const south=lat-.004,west=lon-.005,north=lat+.004,east=lon+.005,key='buildings:'+lat.toFixed(3)+':'+lon.toFixed(3),cached=geoCache.get(key);
+  if(cached&&cached.expires>Date.now())return res.json(cached.data);
   const query='[out:json][timeout:20];(way["building"]('+south+','+west+','+north+','+east+'););out body geom;';
-  const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.nchc.org.tw/api/interpreter'];
+  const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.nchc.org.tw/api/interpreter'];
   let lastError;
-  for(const endpoint of endpoints) {
-    try {
-      const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8','User-Agent':'PinDrive/1.0'},body:'data='+encodeURIComponent(query),signal:AbortSignal.timeout(25000)});
-      if(!r.ok) throw new Error('Overpass HTTP '+r.status);
-      const data=await r.json();
-      geoCache.set(key,{data,expires:Date.now()+30*60*1000});
-      return res.json(data);
-    } catch(error) { lastError=error; console.warn('Building provider failed:',endpoint,error.message); }
+  for(const endpoint of endpoints){
+    try{
+      let r=await fetch(endpoint+'?data='+encodeURIComponent(query),{headers:{'User-Agent':'PinDrive/1.0'},signal:AbortSignal.timeout(18000)});
+      if(!r.ok)r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8','User-Agent':'PinDrive/1.0'},body:'data='+encodeURIComponent(query),signal:AbortSignal.timeout(18000)});
+      if(!r.ok)throw new Error('Overpass HTTP '+r.status);
+      const data=await r.json();geoCache.set(key,{data,expires:Date.now()+1800000});return res.json(data);
+    }catch(e){lastError=e;console.warn('Overpass provider failed:',endpoint,e.message)}
   }
   console.error('All building providers failed:',lastError?.message);
-  res.status(502).json({error:'Building data providers are temporarily unavailable.'});
+  res.status(502).json({error:'Building data providers unavailable.',detail:lastError?.message||'Unknown provider error'});
 });
 
 app.get('/api/weather', async (req, res) => {
