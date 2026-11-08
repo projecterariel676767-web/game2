@@ -41,7 +41,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
 <script>
 (async()=>{
  const $=id=>document.getElementById(id),status=$('status'),params=new URLSearchParams(location.search);
- let viewer,weatherLayer=null,currentBase='aerial',currentTerrain='world',currentWeather='none',weatherAlpha=.85,ionToken='';
+ let viewer,weatherLayer=null,currentBase='aerial',currentTerrain='world',currentWeather='none',weatherAlpha=Math.max(0,Math.min(1,Number(params.get('opacity')||.85))),ionToken='';
  const setStatus=t=>status.textContent=t;
  const styleButtons=(root,attr,value)=>root.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset[attr]===value));
  const ionReady=()=>Boolean(ionToken);
@@ -52,7 +52,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  };
  async function makeBase(kind){
   if(!viewer)return;
-  currentBase=kind;styleButtons($('baseButtons'),'base',kind);
+  const aliases={satellite:'aerial','satellite-labels':'aerial-labels',roads:'road',terrain:'aerial'};kind=aliases[kind]||kind;currentBase=kind;styleButtons($('baseButtons'),'base',kind);
   viewer.imageryLayers.removeAll(true);
   if(kind==='none'){setStatus('Cesium · no imagery');return}
   let provider;
@@ -124,7 +124,9 @@ input[type=range]{width:100%;accent-color:#62e6c5}
   viewer.scene.screenSpaceCameraController.enableCollisionDetection=true;
   viewer.camera.setView({destination:Cesium.Cartesian3.fromDegrees(0,15,24500000),orientation:{heading:0,pitch:-Cesium.Math.PI_OVER_TWO,roll:0}});
   await makeBase(params.get('earth')||'aerial');
+  $('opacity').value=String(Math.round(weatherAlpha*100));$('opacityValue').textContent=Math.round(weatherAlpha*100)+'%';
   if(ionToken)await setTerrain('world');else setTerrain('ellipsoid');
+  const initialWeather=params.get('weather')||'none';if(initialWeather!=='none')setWeather(initialWeather);
   const lat=Number(params.get('lat')),lon=Number(params.get('lon'));
   if(params.has('lat')&&params.has('lon')&&Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180){
    const position=Cesium.Cartesian3.fromDegrees(lon,lat,0);
