@@ -142,7 +142,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
    if(!response.ok)throw new Error('OSM building query HTTP '+response.status);
    const data=await response.json();
    const ways=(data.elements||[]).filter(w=>w.type==='way'&&w.geometry&&w.geometry.length>=4);
-   const all=ways.slice(0,180);
+   const all=ways.slice(0,70);
    let added=0;
    for(const way of all){
     const pts=way.geometry.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
@@ -166,8 +166,20 @@ input[type=range]{width:100%;accent-color:#62e6c5}
     const width=(Math.max(...xs)-Math.min(...xs))*111320*Math.cos(center.lat*Math.PI/180);
     const depth=(Math.max(...ys)-Math.min(...ys))*110540;
     const radius=Math.max(9,Math.min(55,Math.max(width,depth)*0.8));
-    const mound=viewer.entities.add({name:'Raised terrain under building · '+h.toFixed(1)+' m',position:Cesium.Cartesian3.fromDegrees(center.lon,center.lat,ground),ellipse:{semiMajorAxis:radius,semiMinorAxis:Math.max(7,radius*.72),height:ground,extrudedHeight:ground+Math.min(8+h*.7,45),material:Cesium.Color.fromCssColorString('#a66c3e').withAlpha(.58),outline:true,outlineColor:Cesium.Color.fromCssColorString('#f0c58b').withAlpha(.75),outlineWidth:1}});
-    buildingRelief.push(mound);added++;
+    const peak=Cesium.Cartesian3.fromDegrees(center.lon,center.lat,ground+Math.min(6+h*.65,38));
+    const ring=[];
+    for(let j=0;j<8;j++){
+     const angle=j*Math.PI/4;
+     const rLon=radius/(111320*Math.max(.15,Math.cos(center.lat*Math.PI/180)));
+     const rLat=radius/110540;
+     ring.push(Cesium.Cartesian3.fromDegrees(center.lon+Math.cos(angle)*rLon,center.lat+Math.sin(angle)*rLat,ground));
+    }
+    for(let j=0;j<8;j++){
+     const tri=[ring[j],ring[(j+1)%8],peak];
+     const mound=viewer.entities.add({name:'Raised terrain mound · '+h.toFixed(1)+' m',polygon:{hierarchy:new Cesium.PolygonHierarchy(tri),perPositionHeight:true,material:Cesium.Color.fromCssColorString('#a66c3e').withAlpha(.72),outline:true,outlineColor:Cesium.Color.fromCssColorString('#f0c58b').withAlpha(.8),outlineWidth:1}});
+     buildingRelief.push(mound);
+    }
+    added++;
    }
    setStatus('Building relief overlay · '+added+' structures · sampled terrain + raised building mounds');
   }catch(e){console.warn('Building height data unavailable',e);setStatus('Building elevation overlay unavailable · '+(e.message||e))}
