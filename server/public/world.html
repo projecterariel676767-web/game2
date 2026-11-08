@@ -127,7 +127,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  }
  async function updateCountryFlag(){
   try{
-   const r=await fetch('/api/geocode/reverse?lat='+encodeURIComponent(playerLat)+'&lon='+encodeURIComponent(playerLon));
+   const r=await fetch(window.location.origin+'/api/geocode/reverse?lat='+encodeURIComponent(playerLat)+'&lon='+encodeURIComponent(playerLon));
    if(!r.ok)throw new Error('Country lookup API HTTP '+r.status);
    const g=await r.json(),serviceCode=String(g.countryCode||'').trim().toUpperCase();
    if(!/^[A-Z]{2}$/.test(serviceCode))throw new Error('No country at current coordinates');
@@ -278,7 +278,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
   const query='[out:json][timeout:25];(way["building"]('+south+','+west+','+north+','+east+'););out body geom;';
   try{
    setStatus('Sampling terrain and building heights…');
-   const response=await fetch('/api/buildings?lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon));
+   const response=await fetch(window.location.origin+'/api/buildings?lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon));
    if(!response.ok)throw new Error('Building data API HTTP '+response.status);
    const data=await response.json();
    const ways=(data.elements||[]).filter(w=>w.type==='way'&&w.geometry&&w.geometry.length>=4).slice(0,45);
@@ -413,7 +413,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
    const lat=Cesium.Math.toDegrees(c.latitude),lon=Cesium.Math.toDegrees(c.longitude);
    movePlayer(lat,lon);
    const selected={type:'routeSelected',lat,lon,label:lat.toFixed(5)+', '+lon.toFixed(5)};
-   try{const response=await fetch('/api/geocode/reverse?lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon));if(!response.ok)throw new Error('Reverse geocode API HTTP '+response.status);const g=await response.json();selected.label=g.locality||g.city||g.countryName||selected.label;$('status').textContent='Selected · '+selected.label;if(window.parent&&window.parent!==window)window.parent.postMessage(selected,'*');if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(selected))}catch(e){console.warn('Reverse geocode unavailable',e)}
+   try{const response=await fetch(window.location.origin+'/api/geocode/reverse?lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon));if(!response.ok)throw new Error('Reverse geocode API HTTP '+response.status);const g=await response.json();selected.label=g.locality||g.city||g.countryName||selected.label;$('status').textContent='Selected · '+selected.label;if(window.parent&&window.parent!==window)window.parent.postMessage(selected,'*');if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(selected))}catch(e){console.warn('Reverse geocode unavailable',e)}
   },Cesium.ScreenSpaceEventType.LEFT_CLICK);
   if(hasPlayerPosition){updateCountryFlag();}
   voiceSocket=io({transports:['polling'],upgrade:false,reconnection:true});
