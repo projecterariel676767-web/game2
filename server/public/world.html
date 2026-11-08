@@ -12,10 +12,10 @@ button{background:#132e43;border:1px solid #31536a;color:#eaf7fb;border-radius:8
 button.active{background:#15504b;border-color:#62e6c5;color:#fff;box-shadow:0 0 12px #62e6c533}
 label{display:flex;justify-content:space-between;font-size:11px;color:#c8d9e7;margin:8px 0 5px}
 input[type=range]{width:100%;accent-color:#62e6c5}
-.small{font-size:10px;color:#8fa9bd;line-height:1.45;margin-top:5px}
-#mapTools{position:absolute;z-index:10;right:12px;bottom:14px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.small{font-size:10px;color:#8fa9bd;line-height:1.45;margin-top:5px}\n.cesium-viewer-timelineContainer{height:34px!important;bottom:0!important}\n.cesium-viewer-animationContainer{bottom:35px!important}\n.cesium-viewer-bottom{bottom:35px!important}
+#mapTools{position:absolute;z-index:10;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 #mapTools button{background:#071824eF}
-@media(max-width:600px){#earthPanel{top:54px;bottom:auto;left:10px;width:min(270px,calc(100vw - 20px));max-height:calc(100% - 66px);padding:10px}#status{top:8px;left:8px;font-size:10px}#mapTools{bottom:8px;right:8px}button{padding:7px 6px}}
+@media(max-width:600px){#earthPanel{top:54px;bottom:auto;left:10px;width:min(270px,calc(100vw - 20px));max-height:calc(100% - 66px);padding:10px}#status{top:8px;left:8px;font-size:10px} #mapTools{top:8px;right:8px}button{padding:7px 6px}}
 </style></head><body>
 <div id="cesiumContainer"></div><div id="status">Starting Cesium…</div>
 <div id="mapTools"><button id="homeBtn">🌍 Global view</button><button id="modeBtn">2D / 3D</button><button id="panelBtn">Cesium layers ▾</button></div>
@@ -133,28 +133,44 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  async function loadBuildingRelief(lat,lon){
   for(const item of buildingRelief)viewer.entities.remove(item);
   buildingRelief=[];
-  const south=lat-0.006,west=lon-0.008,north=lat+0.006,east=lon+0.008;
-  const query='[out:json][timeout:20];(way["building"]('+south+','+west+','+north+','+east+'););out body geom;';
+  const south=lat-0.004,west=lon-0.005,north=lat+0.004,east=lon+0.005;
+  const query='[out:json][timeout:25];(way["building"]('+south+','+west+','+north+','+east+'););out body geom;';
   try{
-   setStatus('Loading OpenStreetMap building heights…');
-   const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query)});
-   if(!response.ok)throw new Error('Overpass HTTP '+response.status);
+   setStatus('Loading building footprints and elevation data…');
+   let response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query)});
+   if(!response.ok)response=await fetch('https://overpass.kumi.systems/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query)});
+   if(!response.ok)throw new Error('OSM building query HTTP '+response.status);
    const data=await response.json();
-   for(const way of (data.elements||[])){
-    const pts=(way.geometry||[]).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+   const ways=(data.elements||[]).filter(w=>w.type==='way'&&w.geometry&&w.geometry.length>=4);
+   const all=ways.slice(0,180);
+   let added=0;
+   for(const way of all){
+    const pts=way.geometry.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
     if(pts.length<4)continue;
     const tags=way.tags||{};
     const levels=Number(tags['building:levels']);
-    const raw=String(tags.height||'').replace(/m$/i,'').trim();
-    const parsed=parseFloat(raw);
+    const parsed=parseFloat(String(tags.height||'').replace(/m$/i,'').trim());
     const h=Number.isFinite(parsed)&&parsed>0?Math.min(parsed,180):(Number.isFinite(levels)&&levels>0?Math.min(levels*3.2,180):9.6);
-    const ground=Number.isFinite(Number(tags.min_height))?Number(tags.min_height):0;
-    const positions=pts.map(p=>Cesium.Cartesian3.fromDegrees(p.lon,p.lat,ground));
-    const entity=viewer.entities.add({name:'Building height · '+h.toFixed(1)+' m',polygon:{hierarchy:positions, height:ground, extrudedHeight:ground+h, material:Cesium.Color.fromCssColorString('#c88d55').withAlpha(.72), outline:true,outlineColor:Cesium.Color.fromCssColorString('#ffe0a8'),outlineWidth:1,closeTop:true,closeBottom:true}});
-    buildingRelief.push(entity);
+    const minH=parseFloat(String(tags.min_height||'0'));
+    let ground=0;
+    const center=pts.reduce((a,p)=>({lat:a.lat+p.lat/pts.length,lon:a.lon+p.lon/pts.length}),{lat:0,lon:0});
+    try{
+     const sample=await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider,[Cesium.Cartographic.fromDegrees(center.lon,center.lat)]);
+     if(sample&&Number.isFinite(sample[0].height))ground=sample[0].height;
+    }catch(e){console.warn('Building ground sample unavailable',e)}
+    const positions=pts.map(p=>Cesium.Cartesian3.fromDegrees(p.lon,p.lat,ground+Math.max(0,minH)));
+    const hierarchy=new Cesium.PolygonHierarchy(positions);
+    const footprint=viewer.entities.add({name:'Building · '+h.toFixed(1)+' m',polygon:{hierarchy,height:ground+Math.max(0,minH),extrudedHeight:ground+h,material:Cesium.Color.fromCssColorString('#c88d55').withAlpha(.9),outline:true,outlineColor:Cesium.Color.fromCssColorString('#ffe0a8'),outlineWidth:1,closeTop:true,closeBottom:true}});
+    buildingRelief.push(footprint);
+    const xs=pts.map(p=>p.lon),ys=pts.map(p=>p.lat);
+    const width=(Math.max(...xs)-Math.min(...xs))*111320*Math.cos(center.lat*Math.PI/180);
+    const depth=(Math.max(...ys)-Math.min(...ys))*110540;
+    const radius=Math.max(9,Math.min(55,Math.max(width,depth)*0.8));
+    const mound=viewer.entities.add({name:'Raised terrain under building · '+h.toFixed(1)+' m',ellipse:{coordinates:Cesium.Cartesian3.fromDegrees(center.lon,center.lat,ground),semiMajorAxis:radius,semiMinorAxis:Math.max(7,radius*.72),height:ground+Math.min(8+h*.7,45),extrudedHeight:ground,material:Cesium.Color.fromCssColorString('#a66c3e').withAlpha(.58),outline:true,outlineColor:Cesium.Color.fromCssColorString('#f0c58b').withAlpha(.75),outlineWidth:1}});
+    buildingRelief.push(mound);added++;
    }
-   setStatus('Building height overlay · '+buildingRelief.length+' footprints · OSM');
-  }catch(e){console.warn('Building height data unavailable',e);setStatus('Building height overlay unavailable · Overpass service did not respond');}
+   setStatus('Building relief overlay · '+added+' structures · sampled terrain + raised building mounds');
+  }catch(e){console.warn('Building height data unavailable',e);setStatus('Building elevation overlay unavailable · '+(e.message||e))}
   viewer.scene.requestRender();
  }
  async function placeVehicle(lat,lon){
@@ -189,7 +205,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
   if(ionToken)Cesium.Ion.defaultAccessToken=ionToken;
   const terrainProvider=new Cesium.EllipsoidTerrainProvider();
   viewer=new Cesium.Viewer('cesiumContainer',{
-   animation:false,timeline:false,baseLayerPicker:true,geocoder:false,homeButton:true,
+   animation:true,timeline:true,baseLayerPicker:true,geocoder:false,homeButton:true,
    sceneModePicker:true,navigationHelpButton:true,infoBox:false,selectionIndicator:false,
    terrainProvider,baseLayer:false,shouldAnimate:false
   });
