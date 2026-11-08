@@ -133,7 +133,20 @@ input[type=range]{width:100%;accent-color:#62e6c5}
     const position=new Cesium.CallbackProperty(()=>vehiclePosition?Cesium.Cartesian3.add(vehiclePosition,Cesium.Cartesian3.multiplyByScalar(Cesium.Cartesian3.normalize(vehiclePosition,new Cesium.Cartesian3()),5,new Cesium.Cartesian3()),new Cesium.Cartesian3()):Cesium.Cartesian3.fromDegrees(playerLon,playerLat,8),false);
     if(flagBillboard)viewer.entities.remove(flagBillboard);if(flagPole)viewer.entities.remove(flagPole);
     flagPole=viewer.entities.add({position, cylinder:{length:5,topRadius:.035,bottomRadius:.035,material:Cesium.Color.fromCssColorString('#c7d3dc')}});
-    flagBillboard=viewer.entities.add({position,billboard:{image:url,width:46,height:30,verticalOrigin:Cesium.VerticalOrigin.BOTTOM,rotation:new Cesium.CallbackProperty(t=>Math.sin(Cesium.JulianDate.secondsDifference(t,Cesium.JulianDate.now())*2.8)*.13,false),scaleByDistance:new Cesium.NearFarScalar(20,1,2500,.35)}});
+    const cloth=document.createElement('canvas');cloth.width=192;cloth.height=120;const ctx=cloth.getContext('2d');
+    let phase=0;
+    const drawFlag=()=>{
+     if(!ctx)return;phase+=.12;ctx.clearRect(0,0,cloth.width,cloth.height);
+     for(let x=0;x<cloth.width;x+=3){
+      const wave=Math.sin(x*.055+phase)*7+Math.sin(x*.025+phase*.7)*4;
+      ctx.drawImage(image,x,0,3,image.height,x,wave,3,cloth.height);
+      ctx.fillStyle='rgba(3,12,22,'+(.08+Math.abs(wave)/100)+')';ctx.fillRect(x,wave,3,cloth.height);
+     }
+     if(flagBillboard)flagBillboard.billboard.image=cloth;
+    };
+    drawFlag();if(flagBillboard){} 
+    flagBillboard=viewer.entities.add({position,billboard:{image:cloth,width:48,height:30,verticalOrigin:Cesium.VerticalOrigin.BOTTOM,scaleByDistance:new Cesium.NearFarScalar(20,1,2500,.35)}});
+    const animate=()=>{if(!flagBillboard)return;drawFlag();viewer.scene.requestRender();requestAnimationFrame(animate)};requestAnimationFrame(animate);
    };
    image.onerror=()=>{throw new Error('Flag image failed to load')};image.src=url;
    $('flagStatus').textContent=(g.countryName||code.toUpperCase())+' · '+code.toUpperCase()+' · flag attached above the vehicle';
@@ -142,6 +155,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  function movePlayer(lat,lon){
   if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return;
   playerLat=lat;playerLon=lon;timeTouched=false;
+  if(voiceSocket?.connected)voiceSocket.emit('player:update',{nickname:params.get('nickname')||'Driver',vehicleId:params.get('vehicleId')||params.get('vehicle')||'sports-coupe',lat,lon,heading:0});
   placeVehicle(lat,lon).then(p=>{vehiclePosition=p;updateMiniMap();updateCountryFlag()});
   loadBuildingRelief(lat,lon);
   if(mapViewer)mapViewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(lon,lat,850000),duration:.45});
@@ -386,7 +400,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
    vehiclePosition=await placeVehicle(playerLat,playerLon);updateCountryFlag();loadBuildingRelief(playerLat,playerLon);
   }
   voiceSocket=io({transports:['polling'],upgrade:false,reconnection:true});
-  voiceSocket.on('connect',()=>{if(voiceListening)voiceSocket.emit('voice:listen',true)});
+  voiceSocket.on('connect',()=>{voiceSocket.emit('player:update',{nickname:params.get('nickname')||'Driver',vehicleId:params.get('vehicleId')||params.get('vehicle')||'sports-coupe',lat:playerLat,lon:playerLon,heading:0});if(voiceListening)voiceSocket.emit('voice:listen',true)});
   voiceSocket.on('voice:message',payload=>{
    if(!voiceListening||!payload?.audio)return;
    const audio=new Audio(payload.audio);audio.play().catch(e=>{$('voiceStatus').textContent='Tap the panel once to allow audio playback.'});
