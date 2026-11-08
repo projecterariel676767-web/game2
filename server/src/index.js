@@ -14,7 +14,7 @@ const app = express();
 const audioUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 const server = http.createServer(app);
 const corsOptions = { origin: true, methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'], optionsSuccessStatus: 204 };
-const io = new Server(server, { cors: corsOptions, transports: ['polling','websocket'], pingInterval: 25000, pingTimeout: 60000, connectTimeout: 30000, upgradeTimeout: 30000 });
+const io = new Server(server, { cors: corsOptions, transports: ['polling','websocket'], pingInterval: 25000, pingTimeout: 60000, connectTimeout: 30000, upgradeTimeout: 30000, maxHttpBufferSize: 8e6 });
 // Reflect the requesting web origin (no cookies/credentials are used by this API).
 // This avoids stale CLIENT_ORIGIN settings blocking the /preview host.
 app.use(cors(corsOptions));
@@ -137,17 +137,30 @@ app.get('/preview', (_req, res) => res.sendFile(path.join(here, '../public/previ
 app.get('/', (_req, res) => res.redirect('/preview'));
 
 const players = new Map();
+const voiceListeners = new Set();
 io.on('connection', socket => {
+  socket.emit('players:snapshot', [...players.values()]);
   socket.on('player:update', data => {
-    if (!data || !Number.isFinite(data.lat) || !Number.isFinite(data.lon)) return;
-    const player = { id: socket.id, nickname: String(data.nickname || 'Driver').slice(0,24), vehicleId: String(data.vehicleId || 'sedan'), lat: data.lat, lon: data.lon, heading: Number(data.heading) || 0, updatedAt: Date.now() };
+    if (!data || !Number.isFinite(Number(data.lat)) || !Number.isFinite(Number(data.lon))) return;
+    const player = { id: socket.id, nickname: String(data.nickname || 'Driver').slice(0,24), vehicleId: String(data.vehicleId || 'sports-coupe'), lat: Number(data.lat), lon: Number(data.lon), heading: Number(data.heading) || 0, updatedAt: Date.now() };
     players.set(socket.id, player); socket.broadcast.emit('player:updated', player); socket.emit('players:snapshot', [...players.values()]);
   });
   socket.on('chat:send', data => {
     const message = { id: socket.id, nickname: String(data?.nickname || 'Driver').slice(0,24), text: String(data?.text || '').slice(0,500), at: Date.now() };
     if (message.text) io.emit('chat:message', message);
   });
-  socket.on('disconnect', () => { players.delete(socket.id); io.emit('player:left', socket.id); });
+  socket.on('voice:listen', enabled => {
+    if (enabled) voiceListeners.add(socket.id); else voiceListeners.delete(socket.id);
+    socket.emit('voice:listeners', voiceListeners.size);
+  });
+  socket.on('voice:send', payload => {
+    if (!payload || typeof payload.audio !== 'string' || !payload.audio.startsWith('data:audio/')) return;
+    if (payload.audio.length > 7_000_000) return socket.emit('voice:error', { message: 'Voice message is too large. Please record a shorter message.' });
+    const message = { nickname: String(payload.nickname || 'Driver').slice(0,24), audio: payload.audio, mime: String(payload.mime || 'audio/webm').slice(0,80), at: Date.now() };
+    for (const id of voiceListeners) if (id !== socket.id) io.to(id).emit('voice:message', message);
+    socket.emit('voice:sent', { at: message.at, listeners: Math.max(0, voiceListeners.size - (voiceListeners.has(socket.id) ? 1 : 0)) });
+  });
+  socket.on('disconnect', () => { players.delete(socket.id); voiceListeners.delete(socket.id); io.emit('player:left', socket.id); });
 });
 
 const port = Number(process.env.PORT || 10000);
