@@ -6,10 +6,32 @@
     "orientation": "landscape",
     "userInterfaceStyle": "dark",
     "scheme": "pindrive",
-    "ios": { "supportsTablet": true, "bundleIdentifier": "com.projecterariel.pindrive" },
-    "android": { "package": "com.projecterariel.pindrive", "versionCode": 1, "permissions": ["INTERNET"] },
-    "web": { "bundler": "metro", "name": "Pin Drive" },
-    "plugins": ["expo-secure-store"],
-    "extra": { "apiUrl": "https://pin-drive.onrender.com" }
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.projecterariel.pindrive"
+    },
+    "android": {
+      "package": "com.projecterariel.pindrive",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "name": "Pin Drive"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Pin Drive to use your microphone."
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "https://pin-drive.onrender.com"
+    }
   }
 }
