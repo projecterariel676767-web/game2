@@ -109,7 +109,9 @@ input[type=range]{width:100%;accent-color:#62e6c5}
   try{
    mapViewer=new Cesium.Viewer('mapMini',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:true,sceneModePicker:true,navigationHelpButton:true,infoBox:false,selectionIndicator:false,baseLayer:false,terrainProvider:new Cesium.EllipsoidTerrainProvider(),sceneMode:Cesium.SceneMode.SCENE3D});
    if(ionToken){try{mapViewer.terrainProvider=await Cesium.createWorldTerrainAsync()}catch(e){console.warn('Mini map terrain unavailable',e)}}
-   const mainLayer=viewer.imageryLayers.length?viewer.imageryLayers.get(0):null;\n   const mapProvider=mainLayer?.imageryProvider||new Cesium.UrlTemplateImageryProvider({url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',credit:'Esri World Imagery'});\n   mapViewer.imageryLayers.addImageryProvider(mapProvider);
+   const mainLayer=viewer.imageryLayers.length?viewer.imageryLayers.get(0):null;
+    const mapProvider=mainLayer?.imageryProvider||new Cesium.UrlTemplateImageryProvider({url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',credit:'Esri World Imagery'});
+    mapViewer.imageryLayers.addImageryProvider(mapProvider);
    mapViewer.entities.add({id:'player-marker',position:Cesium.Cartesian3.fromDegrees(playerLon,playerLat),point:{pixelSize:13,color:Cesium.Color.fromCssColorString('#62e6c5'),outlineColor:Cesium.Color.WHITE,outlineWidth:2},label:{text:'YOU',font:'12px sans-serif',pixelOffset:new Cesium.Cartesian2(0,-20),fillColor:Cesium.Color.WHITE,showBackground:true}});
    mapViewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(playerLon,playerLat,850000),duration:0});
    mapViewer.screenSpaceEventHandler.setInputAction(m=>{
