@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing } from 'react-native';
 import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
@@ -9,6 +10,29 @@ import { VEHICLES } from './src/vehicles';
 
 type Tab = 'drive' | 'world' | 'ai' | 'pin';
 const tabs: {id:Tab;label:string;icon:string}[] = [{id:'drive',label:'Drive',icon:'🚘'},{id:'world',label:'World',icon:'🌍'},{id:'ai',label:'AI',icon:'✦'},{id:'pin',label:'Pin System',icon:'⌖'}];
+function AINebula({active=false}:{active?:boolean}) {
+  const pulse=useRef(new Animated.Value(0)).current;
+  const drift=useRef(new Animated.Value(0)).current;
+  useEffect(()=>{
+    const a=Animated.loop(Animated.sequence([
+      Animated.timing(pulse,{toValue:1,duration:2600,useNativeDriver:true,easing:Easing.inOut(Easing.sin)}),
+      Animated.timing(pulse,{toValue:0,duration:2600,useNativeDriver:true,easing:Easing.inOut(Easing.sin)})
+    ]));
+    const b=Animated.loop(Animated.timing(drift,{toValue:1,duration:18000,useNativeDriver:true,easing:Easing.linear}));
+    a.start();b.start();return()=>{a.stop();b.stop()};
+  },[pulse,drift]);
+  const spin=drift.interpolate({inputRange:[0,1],outputRange:['0deg','360deg']});
+  const scale=pulse.interpolate({inputRange:[0,1],outputRange:[0.92,active?1.18:1.08]});
+  const glow=pulse.interpolate({inputRange:[0,1],outputRange:[0.45,active?0.95:0.72]});
+  return <View style={s.nebulaStage}>
+    <Animated.View style={[s.nebulaHalo,{opacity:glow,transform:[{scale}]}]}/>
+    <Animated.View style={[s.nebulaCloud,s.nebulaCloudA,{transform:[{rotate:spin},{scale}]}]}/>
+    <Animated.View style={[s.nebulaCloud,s.nebulaCloudB,{transform:[{rotate:spin},{scale:scale}]}]}/>
+    <Animated.View style={[s.nebulaCore,{opacity:glow,transform:[{scale}]}]}/>
+    <View style={s.nebulaSpark}><Text style={s.nebulaGlyph}>✦</Text></View>
+  </View>;
+}
+
 
 export default function App() {
   const [token,setToken]=useState(false), [loading,setLoading]=useState(true), [mode,setMode]=useState<'login'|'register'>('register');
@@ -41,12 +65,22 @@ export default function App() {
   return <View style={s.app}><StatusBar style="light"/><View style={s.top}><Text style={s.logo}>PIN <Text style={{color:'#62e6c5'}}>DRIVE</Text></Text><View style={s.topRight}><Text style={s.player}>● {user?.nickname||'Driver'}</Text><Pressable onPress={logout}><Text style={s.logout}>Log out</Text></Pressable></View></View>
     <View style={s.body}><View style={s.sidebar}>{tabs.map(t=><Pressable key={t.id} onPress={()=>setTab(t.id)} style={[s.nav,tab===t.id&&s.navActive]}><Text style={s.navIcon}>{t.icon}</Text><Text style={[s.navText,tab===t.id&&s.navTextActive]}>{t.label}</Text></Pressable>)}<View style={{flex:1}}/><Text style={s.online}>{online?'● ONLINE':'○ OFFLINE'}</Text><Text style={s.small}>v1.0 prototype</Text></View>
     <ScrollView style={s.content} contentContainerStyle={{padding:18}}>
-      {tab==='drive'&&<><Text style={s.title}>Choose your vehicle</Text><Text style={s.muted}>Select a vehicle to drive in the shared world.</Text><View style={s.vehicleGrid}>{VEHICLES.map(v=><Pressable key={v.id} onPress={()=>chooseVehicle(v.id)} style={[s.vehicleCard,vehicle===v.id&&s.selected]}><Text style={s.carIcon}>🚗</Text><Text style={s.cardTitle}>{v.name}</Text><Text style={s.muted}>{v.className}</Text><Text style={s.link} onPress={()=>Linking.openURL(v.modelPage)}>Open 3D asset pack ↗</Text></Pressable>)}</View><Text style={s.section}>Start driving</Text><Text style={s.muted}>Choose a destination in the global search, then enter the world.</Text><View style={s.searchRow}><TextInput style={[s.input,{flex:1,marginBottom:0}]} placeholder="Place, address, or latitude, longitude" placeholderTextColor="#7f8c9a" value={query} onChangeText={setQuery}/><Pressable style={s.primarySmall} onPress={locate}><Text style={s.primaryText}>GO</Text></Pressable></View>{route&&<Text style={s.success}>Destination: {route.label||route.lat+', '+route.lon}</Text>}<Pressable style={s.primary} onPress={()=>setTab('world')}><Text style={s.primaryText}>ENTER WORLD</Text></Pressable></>}
+      {tab==='drive'&&<><View style={s.heroRow}><View style={{flex:1}}><Text style={s.eyebrow}>GARAGE / VEHICLE SELECT</Text><Text style={s.title}>Choose your ride</Text><Text style={s.muted}>Select a vehicle and inspect its 3D preview before entering the world.</Text></View><View style={s.counter}><Text style={s.counterValue}>20</Text><Text style={s.counterLabel}>VEHICLES</Text></View></View><View style={s.vehicleShowcase}><View style={s.previewHead}><View><Text style={s.eyebrow}>LIVE 3D PREVIEW</Text><Text style={s.previewName}>{VEHICLES.find(v=>v.id===vehicle)?.name||'Vehicle'}</Text></View><Text style={s.previewHint}>DRAG TO ORBIT · SCROLL TO ZOOM</Text></View><View style={s.vehicleModelFrame}><WorldView url={API+'/preview/vehicle.html?name='+encodeURIComponent(VEHICLES.find(v=>v.id===vehicle)?.name||'Vehicle')}/></View><View style={s.previewFoot}><Text style={s.muted}>Generic concept-car preview · interactive 3D</Text><Pressable onPress={()=>Linking.openURL(VEHICLES.find(v=>v.id===vehicle)?.modelPage||'https://shuriken.studio/kits/town-vehicles')}><Text style={s.link}>Browse vehicle assets ↗</Text></Pressable></View></View><Text style={s.section}>Select vehicle</Text><View style={s.vehicleGrid}>{VEHICLES.map(v=><Pressable key={v.id} onPress={()=>chooseVehicle(v.id)} style={[s.vehicleCard,vehicle===v.id&&s.selected]}><Text style={s.carIcon}>🚘</Text><Text style={s.cardTitle}>{v.name}</Text><Text style={s.muted}>{v.className}</Text>{vehicle===v.id&&<Text style={s.selectedLabel}>SELECTED ✓</Text>}</Pressable>)}</View><Text style={s.section}>Plan your route</Text><Text style={s.muted}>Search a place or enter latitude and longitude.</Text><View style={s.searchRow}><TextInput style={[s.input,{flex:1,marginBottom:0}]} placeholder="Place, address, or latitude, longitude" placeholderTextColor="#7f8c9a" value={query} onChangeText={setQuery}/><Pressable style={s.primarySmall} onPress={locate}><Text style={s.primaryText}>GO</Text></Pressable></View>{route&&<Text style={s.success}>Destination: {route.label||route.lat+', '+route.lon}</Text>}<Pressable style={s.primary} onPress={()=>setTab('world')}><Text style={s.primaryText}>ENTER WORLD</Text></Pressable></>}
       {tab==='world'&&<><Text style={s.title}>Open world</Text><Text style={s.muted}>Cesium globe · terrain · weather overlays · route navigation</Text><View style={s.mapFrame}><WorldView url={worldUrl} onRouteSelect={handleMapRoute}/></View><View style={s.controls}><Text style={s.controlLabel}>EARTH</Text>{['satellite','satellite-labels','roads','terrain'].map(x=><Pressable key={x} style={[s.chip,earth===x&&s.chipOn]} onPress={()=>{setEarth(x);persist({earth:x})}}><Text style={s.chipText}>{x}</Text></Pressable>)}</View><View style={s.controls}><Text style={s.controlLabel}>WEATHER</Text>{['none','clouds','precipitation','temperature','wind','pressure'].map(x=><Pressable key={x} style={[s.chip,weather===x&&s.chipOn]} onPress={()=>{setWeather(x);persist({weather:x})}}><Text style={s.chipText}>{x}</Text></Pressable>)}</View><View style={s.controls}><Text style={s.controlLabel}>CAMERA</Text>{['driver','chase','free'].map(x=><Pressable key={x} style={[s.chip,camera===x&&s.chipOn]} onPress={()=>{setCamera(x);persist({cameraMode:x})}}><Text style={s.chipText}>{x}</Text></Pressable>)}</View><Text style={s.muted}>Overlay opacity: {Math.round(Number(opacity)*100)}%</Text><View style={s.controls}>{['0.25','0.5','0.65','0.8','1'].map(x=><Pressable key={x} style={[s.chip,opacity===x&&s.chipOn]} onPress={()=>{setOpacity(x);persist({opacity:Number(x)})}}><Text style={s.chipText}>{Math.round(Number(x)*100)}%</Text></Pressable>)}</View>{route&&<Text style={s.success}>Route target: {route.label||route.lat+', '+route.lon}</Text>}{weatherInfo&&<View style={s.panel}><Text style={s.cardTitle}>Weather · {weatherInfo.city}, {weatherInfo.country}</Text><Text style={s.bubbleText}>{weatherInfo.temperature}°C · feels like {weatherInfo.feels_like}°C · {weatherInfo.description}</Text><Text style={s.bubbleText}>Humidity {weatherInfo.humidity}% · Wind {weatherInfo.wind} m/s</Text></View>}</>}
       {tab === 'ai' ? (
-        <View>
-          <Text style={s.title}>Pin Drive AI</Text>
-          <Text style={s.muted}>Ask about routes, driving, vehicles, geography and your world.</Text>
+        <View style={s.aiPage}>
+          <Text style={s.eyebrow}>PIN INTELLIGENCE</Text>
+          <Text style={s.title}>Your AI co-driver</Text>
+          <Text style={s.muted}>Talk naturally. Ask about routes, vehicles, geography and your world.</Text>
+          <View style={s.aiOrbCard}>
+            <AINebula active={recorderState.isRecording}/>
+            <Text style={s.aiOrbTitle}>{recorderState.isRecording?'Listening to you':'Pin AI is ready'}</Text>
+            <Text style={s.aiOrbCaption}>{recorderState.isRecording?'Speak clearly — your voice is being captured':'Tap the orb to start a voice conversation'}</Text>
+            <Pressable style={[s.voiceOrbButton,recorderState.isRecording&&s.voiceOrbActive]} onPress={toggleVoice}>
+              <Text style={s.voiceOrbButtonText}>{recorderState.isRecording?'STOP LISTENING':'✦  TALK TO PIN AI'}</Text>
+            </Pressable>
+          </View>
+          <View style={s.chatHeader}><Text style={s.section}>Conversation</Text><Text style={s.muted}>{messages.length} messages</Text></View>
           <View style={s.chat}>
             {messages.map((m,i) => (
               <View key={i} style={[s.bubble,m.role === 'user' ? s.userBubble : s.aiBubble]}>
@@ -54,16 +88,14 @@ export default function App() {
                 <Text style={s.bubbleText}>{m.content}</Text>
               </View>
             ))}
+            {busy&&<Text style={s.muted}>Pin AI is thinking…</Text>}
           </View>
           <View style={s.searchRow}>
-            <TextInput style={[s.input,{flex:1,marginBottom:0}]} placeholder="Ask AI or describe an image…" placeholderTextColor="#7f8c9a" value={aiText} onChangeText={setAiText} onSubmitEditing={sendAI}/>
+            <TextInput style={[s.input,{flex:1,marginBottom:0}]} placeholder="Message Pin AI…" placeholderTextColor="#7f8c9a" value={aiText} onChangeText={setAiText} onSubmitEditing={sendAI}/>
             <Pressable style={s.primarySmall} onPress={sendAI}><Text style={s.primaryText}>SEND</Text></Pressable>
-            <Pressable style={s.primarySmall} onPress={sendImage}><Text style={s.primaryText}>IMAGE</Text></Pressable>
-            <Pressable style={s.primarySmall} onPress={toggleVoice}><Text style={s.primaryText}>{recorderState.isRecording ? 'STOP' : 'VOICE'}</Text></Pressable>
+            <Pressable style={s.secondarySmall} onPress={sendImage}><Text style={s.secondaryText}>IMAGE</Text></Pressable>
           </View>
-          {images.map((uri,i) => (
-            <Image key={i} source={{uri}} style={{width:'100%',height:260,borderRadius:12,marginVertical:8}} resizeMode="contain" />
-          ))}
+          {images.map((uri,i) => <Image key={i} source={{uri}} style={{width:'100%',height:260,borderRadius:14,marginVertical:8}} resizeMode="contain" />)}
         </View>
       ) : null}
       {tab==='pin'&&<><Text style={s.title}>Pin System</Text><Text style={s.muted}>Player identity, navigation pins and world preferences.</Text><View style={s.panel}><Text style={s.cardTitle}>Driver profile</Text><Text style={s.bubbleText}>Nickname: {user?.nickname}</Text><Text style={s.bubbleText}>Email: {user?.email}</Text></View><View style={s.panel}><Text style={s.cardTitle}>World systems</Text><Pressable onPress={()=>{setPinEnabled(!pinEnabled);persist({pinSystem:{enabled:!pinEnabled}})}}><Text style={s.bubbleText}>{pinEnabled?'● Pin System enabled':'○ Pin System disabled'} — tap to toggle</Text></Pressable><Pressable onPress={()=>setOnline(!online)}><Text style={s.bubbleText}>{online?'● Multiplayer presence enabled ('+onlineCount+' online)':'○ Multiplayer presence paused'} — tap to toggle</Text></Pressable></View><View style={s.panel}><Text style={s.cardTitle}>Saved preferences</Text><Text style={s.bubbleText}>Vehicle: {VEHICLES.find(v=>v.id===vehicle)?.name}</Text><Text style={s.bubbleText}>Earth: {earth} · Weather: {weather} · Camera: {camera}</Text></View><View style={s.panel}><Text style={s.cardTitle}>World chat · {onlineCount} online</Text>{chatMessages.slice(-30).map((m,i)=><Text key={i} style={s.bubbleText}><Text style={{color:'#62e6c5',fontWeight:'700'}}>{m.nickname}: </Text>{m.text}</Text>)}<View style={s.searchRow}><TextInput style={[s.input,{flex:1,marginBottom:0}]} placeholder="Message other drivers…" placeholderTextColor="#7f8c9a" value={chatText} onChangeText={setChatText} onSubmitEditing={sendWorldChat}/><Pressable style={s.primarySmall} onPress={sendWorldChat}><Text style={s.primaryText}>SEND</Text></Pressable></View></View></>}
@@ -72,5 +104,79 @@ export default function App() {
   </View>;
 }
 const s=StyleSheet.create({
- center:{flex:1,backgroundColor:'#07121d',alignItems:'center',justifyContent:'center',gap:12},authPage:{flex:1,backgroundColor:'#07121d',alignItems:'center',justifyContent:'center',padding:20},authCard:{width:'100%',maxWidth:440,backgroundColor:'#101f2d',borderColor:'#263c4d',borderWidth:1,borderRadius:20,padding:28},brand:{fontSize:28,fontWeight:'900',color:'#f4f8fb',letterSpacing:2},subtitle:{color:'#8fa5b7',marginTop:4,marginBottom:28},heading:{fontSize:22,fontWeight:'700',color:'#f4f8fb',marginBottom:18},input:{backgroundColor:'#0a1723',borderColor:'#2a4052',borderWidth:1,borderRadius:10,padding:13,color:'#fff',marginBottom:12,minWidth:0},primary:{backgroundColor:'#62e6c5',borderRadius:10,padding:14,alignItems:'center',marginTop:10},primarySmall:{backgroundColor:'#62e6c5',borderRadius:10,paddingHorizontal:20,justifyContent:'center',alignItems:'center'},primaryText:{color:'#062019',fontWeight:'900',letterSpacing:1},switch:{color:'#62e6c5',textAlign:'center',marginTop:18},error:{color:'#ff8c8c',marginVertical:8},success:{color:'#62e6c5',marginVertical:10},muted:{color:'#8fa5b7',fontSize:13,marginTop:4},app:{flex:1,backgroundColor:'#07121d'},top:{height:60,backgroundColor:'#0d1b28',borderBottomWidth:1,borderBottomColor:'#243747',paddingHorizontal:18,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},logo:{color:'#f4f8fb',fontSize:20,fontWeight:'900',letterSpacing:1.5},topRight:{flexDirection:'row',alignItems:'center',gap:16},player:{color:'#a6bac8',fontSize:12},logout:{color:'#62e6c5',fontSize:12},body:{flex:1,flexDirection:'row'},sidebar:{width:112,backgroundColor:'#0b1824',padding:10,borderRightWidth:1,borderRightColor:'#243747'},nav:{paddingVertical:14,alignItems:'center',borderRadius:10,marginBottom:6},navActive:{backgroundColor:'#173b3b'},navIcon:{fontSize:22},navText:{fontSize:11,color:'#8fa5b7',marginTop:5},navTextActive:{color:'#62e6c5',fontWeight:'700'},online:{color:'#62e6c5',fontSize:10,textAlign:'center'},small:{color:'#62798b',fontSize:9,textAlign:'center',marginTop:8},content:{flex:1},title:{fontSize:25,fontWeight:'800',color:'#f4f8fb'},section:{fontSize:17,fontWeight:'700',color:'#f4f8fb',marginTop:24,marginBottom:5},vehicleGrid:{flexDirection:'row',flexWrap:'wrap',gap:10,marginTop:18},vehicleCard:{width:'31%',minWidth:145,backgroundColor:'#101f2d',borderWidth:1,borderColor:'#263c4d',borderRadius:12,padding:13},selected:{borderColor:'#62e6c5',backgroundColor:'#12302f'},carIcon:{fontSize:27},cardTitle:{color:'#f4f8fb',fontWeight:'700',marginTop:7},link:{color:'#62e6c5',fontSize:10,marginTop:8},searchRow:{flexDirection:'row',gap:8,marginTop:14,marginBottom:12},mapFrame:{height:420,backgroundColor:'#091622',borderRadius:14,overflow:'hidden',marginTop:16,borderWidth:1,borderColor:'#263c4d'},controls:{flexDirection:'row',flexWrap:'wrap',gap:7,alignItems:'center',marginTop:12},controlLabel:{color:'#7f96a8',fontSize:10,fontWeight:'800',width:75},chip:{borderWidth:1,borderColor:'#30475a',borderRadius:20,paddingHorizontal:12,paddingVertical:7},chipOn:{backgroundColor:'#173b3b',borderColor:'#62e6c5'},chipText:{color:'#d8e4ec',fontSize:11},chat:{minHeight:250,backgroundColor:'#0b1824',borderRadius:12,padding:12,marginVertical:15,gap:10},bubble:{maxWidth:'88%',padding:12,borderRadius:12},userBubble:{alignSelf:'flex-end',backgroundColor:'#16413e'},aiBubble:{alignSelf:'flex-start',backgroundColor:'#152635'},bubbleRole:{color:'#62e6c5',fontSize:9,fontWeight:'900',marginBottom:5},bubbleText:{color:'#e3edf3',fontSize:13,lineHeight:19},panel:{backgroundColor:'#101f2d',borderWidth:1,borderColor:'#263c4d',borderRadius:12,padding:16,marginTop:14,gap:10}
+ center:{flex:1,backgroundColor:'#070d1c',alignItems:'center',justifyContent:'center',gap:12},
+ authPage:{flex:1,backgroundColor:'#070d1c',alignItems:'center',justifyContent:'center',padding:20},
+ authCard:{width:'100%',maxWidth:460,backgroundColor:'#111b31',borderColor:'#26395c',borderWidth:1,borderRadius:24,padding:30,shadowColor:'#1b8cff',shadowOpacity:0.12,shadowRadius:28,elevation:12},
+ brand:{fontSize:29,fontWeight:'900',color:'#f4f7ff',letterSpacing:2.5},
+ subtitle:{color:'#91a3c4',marginTop:5,marginBottom:30},
+ heading:{fontSize:23,fontWeight:'800',color:'#f4f7ff',marginBottom:18},
+ input:{backgroundColor:'#0b1427',borderColor:'#2b3e63',borderWidth:1,borderRadius:12,padding:14,color:'#fff',marginBottom:12,minWidth:0},
+ primary:{backgroundColor:'#5de0cb',borderRadius:12,padding:15,alignItems:'center',marginTop:10,shadowColor:'#5de0cb',shadowOpacity:0.2,shadowRadius:12},
+ primarySmall:{backgroundColor:'#5de0cb',borderRadius:11,paddingHorizontal:20,justifyContent:'center',alignItems:'center'},
+ primaryText:{color:'#061b27',fontWeight:'900',letterSpacing:1},
+ secondarySmall:{backgroundColor:'#172747',borderColor:'#45618e',borderWidth:1,borderRadius:11,paddingHorizontal:16,justifyContent:'center',alignItems:'center'},
+ secondaryText:{color:'#c7d8f7',fontWeight:'800',letterSpacing:.5},
+ switch:{color:'#72e5d5',textAlign:'center',marginTop:18},
+ error:{color:'#ff9b9b',marginVertical:8},success:{color:'#67e8d7',marginVertical:10},
+ muted:{color:'#92a4c3',fontSize:13,marginTop:5,lineHeight:19},
+ app:{flex:1,backgroundColor:'#070d1c'},
+ top:{height:68,backgroundColor:'#0c1529',borderBottomWidth:1,borderBottomColor:'#1e3153',paddingHorizontal:22,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+ logo:{color:'#f4f7ff',fontSize:21,fontWeight:'900',letterSpacing:2},
+ topRight:{flexDirection:'row',alignItems:'center',gap:18},
+ player:{color:'#b7c7e2',fontSize:12},logout:{color:'#72e5d5',fontSize:12,fontWeight:'800'},
+ body:{flex:1,flexDirection:'row'},
+ sidebar:{width:126,backgroundColor:'#0b1427',padding:12,borderRightWidth:1,borderRightColor:'#1e3153'},
+ nav:{paddingVertical:15,alignItems:'center',borderRadius:13,marginBottom:8,borderWidth:1,borderColor:'transparent'},
+ navActive:{backgroundColor:'#142747',borderColor:'#2c5278'},
+ navIcon:{fontSize:22},navText:{fontSize:11,color:'#879abb',marginTop:6},navTextActive:{color:'#73e4d4',fontWeight:'800'},
+ online:{color:'#68e5cf',fontSize:10,textAlign:'center',fontWeight:'800'},
+ small:{color:'#607496',fontSize:9,textAlign:'center',marginTop:8},
+ content:{flex:1},title:{fontSize:29,fontWeight:'900',color:'#f3f6ff',letterSpacing:-.5},
+ eyebrow:{fontSize:10,fontWeight:'900',letterSpacing:2,color:'#70dfd2',marginBottom:8},
+ section:{fontSize:18,fontWeight:'800',color:'#f3f6ff',marginTop:25,marginBottom:7},
+ heroRow:{flexDirection:'row',alignItems:'center',gap:16,marginBottom:18},
+ counter:{backgroundColor:'#111f39',borderWidth:1,borderColor:'#2a4167',borderRadius:15,padding:14,alignItems:'center',minWidth:78},
+ counterValue:{fontSize:24,fontWeight:'900',color:'#72e5d5'},counterLabel:{fontSize:9,color:'#91a4c4',fontWeight:'800',letterSpacing:1},
+ vehicleShowcase:{backgroundColor:'#101b31',borderWidth:1,borderColor:'#2b4168',borderRadius:18,padding:14,marginTop:12,shadowColor:'#163e6d',shadowOpacity:.16,shadowRadius:20},
+ previewHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:8},
+ previewName:{fontSize:20,fontWeight:'800',color:'#f4f7ff'},
+ previewHint:{fontSize:9,color:'#7f96bb',letterSpacing:1,textAlign:'right'},
+ vehicleModelFrame:{height:290,backgroundColor:'#091326',borderRadius:13,overflow:'hidden',marginTop:12},
+ previewFoot:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginTop:8},
+ vehicleGrid:{flexDirection:'row',flexWrap:'wrap',gap:10,marginTop:14},
+ vehicleCard:{width:'31%',minWidth:145,backgroundColor:'#111e35',borderWidth:1,borderColor:'#2a3e62',borderRadius:14,padding:14},
+ selected:{borderColor:'#5de0cb',backgroundColor:'#132e3c',shadowColor:'#5de0cb',shadowOpacity:.15,shadowRadius:10},
+ carIcon:{fontSize:27},cardTitle:{color:'#f4f7ff',fontWeight:'800',marginTop:7},
+ selectedLabel:{color:'#6de3d4',fontSize:9,fontWeight:'900',marginTop:8,letterSpacing:1},
+ link:{color:'#71e3d5',fontSize:11,fontWeight:'700',marginTop:8},
+ searchRow:{flexDirection:'row',gap:8,marginTop:14,marginBottom:12,alignItems:'stretch'},
+ mapFrame:{height:640,backgroundColor:'#091326',borderRadius:17,overflow:'hidden',marginTop:16,borderWidth:1,borderColor:'#2a4168'},
+ controls:{flexDirection:'row',flexWrap:'wrap',gap:7,alignItems:'center',marginTop:12},
+ controlLabel:{color:'#8298bc',fontSize:10,fontWeight:'900',width:75,letterSpacing:1},
+ chip:{borderWidth:1,borderColor:'#30476e',borderRadius:20,paddingHorizontal:13,paddingVertical:8,backgroundColor:'#101d34'},
+ chipOn:{backgroundColor:'#173b4a',borderColor:'#5de0cb'},
+ chipText:{color:'#d8e4f7',fontSize:11,fontWeight:'700'},
+ chat:{minHeight:220,backgroundColor:'#0d1930',borderWidth:1,borderColor:'#263b61',borderRadius:15,padding:14,marginVertical:14,gap:10},
+ bubble:{maxWidth:'88%',padding:13,borderRadius:14},
+ userBubble:{alignSelf:'flex-end',backgroundColor:'#174b50'},
+ aiBubble:{alignSelf:'flex-start',backgroundColor:'#172642'},
+ bubbleRole:{color:'#74e4d7',fontSize:9,fontWeight:'900',marginBottom:5,letterSpacing:1},
+ bubbleText:{color:'#e3ebfa',fontSize:13,lineHeight:20},
+ panel:{backgroundColor:'#111e35',borderWidth:1,borderColor:'#2b4168',borderRadius:15,padding:16,marginTop:14,gap:10},
+ aiPage:{paddingBottom:24},
+ aiOrbCard:{alignItems:'center',backgroundColor:'#0d1930',borderColor:'#2a4168',borderWidth:1,borderRadius:22,padding:18,marginTop:18,overflow:'hidden'},
+ nebulaStage:{width:220,height:210,alignItems:'center',justifyContent:'center'},
+ nebulaHalo:{position:'absolute',width:190,height:190,borderRadius:100,backgroundColor:'#287bd0',shadowColor:'#36bfff',shadowOpacity:.9,shadowRadius:38,elevation:16},
+ nebulaCloud:{position:'absolute',width:150,height:150,borderRadius:100,borderWidth:20,shadowRadius:30},
+ nebulaCloudA:{borderColor:'#49d9d0',backgroundColor:'rgba(33,128,198,0.32)',shadowColor:'#52d8ff',shadowOpacity:.8},
+ nebulaCloudB:{width:116,height:116,borderWidth:17,borderColor:'#a66aff',backgroundColor:'rgba(112,67,190,0.25)',shadowColor:'#a66aff',shadowOpacity:.8},
+ nebulaCore:{position:'absolute',width:76,height:76,borderRadius:50,backgroundColor:'#8feaff',shadowColor:'#5de0ff',shadowOpacity:1,shadowRadius:32,elevation:20},
+ nebulaSpark:{width:48,height:48,alignItems:'center',justifyContent:'center'},
+ nebulaGlyph:{fontSize:34,color:'#fff',textShadowColor:'#7beaff',textShadowRadius:18},
+ aiOrbTitle:{fontSize:20,fontWeight:'900',color:'#f4f7ff',marginTop:4},
+ aiOrbCaption:{fontSize:12,color:'#91a4c4',textAlign:'center',marginTop:6},
+ voiceOrbButton:{backgroundColor:'#5de0cb',borderRadius:30,paddingHorizontal:24,paddingVertical:13,marginTop:16},
+ voiceOrbActive:{backgroundColor:'#ff718c'},
+ voiceOrbButtonText:{color:'#071b2a',fontSize:11,fontWeight:'900',letterSpacing:1},
+ chatHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:8}
 });
