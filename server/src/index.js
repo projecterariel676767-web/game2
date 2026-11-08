@@ -143,16 +143,27 @@ app.get('/api/buildings', async (req,res)=>{
 });
 
 app.get('/api/weather', async (req, res) => {
-  if (!process.env.OPENWEATHER_API_KEY) return res.status(503).json({ error: 'OPENWEATHER_API_KEY is not configured.' });
-  const lat = Number(req.query.lat), lon = Number(req.query.lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180) return res.status(400).json({ error: 'Valid lat and lon are required.' });
-  try {
-    const url = new URL('https://api.openweathermap.org/data/2.5/weather');
-    url.searchParams.set('lat', lat); url.searchParams.set('lon', lon); url.searchParams.set('appid', process.env.OPENWEATHER_API_KEY); url.searchParams.set('units', 'metric');
-    const r = await fetch(url); const d = await r.json();
-    if (!r.ok) return res.status(502).json({ error: d.message || 'Weather provider error.' });
-    res.json({ city: d.name, country: d.sys?.country, temperature: d.main?.temp, feels_like: d.main?.feels_like, humidity: d.main?.humidity, description: d.weather?.[0]?.description, icon: d.weather?.[0]?.icon, wind: d.wind?.speed });
-  } catch { res.status(502).json({ error: 'Weather service unavailable.' }); }
+  const lat=Number(req.query.lat),lon=Number(req.query.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return res.status(400).json({error:'Valid lat and lon are required.'});
+  let providerError='';
+  if(process.env.OPENWEATHER_API_KEY){
+    try{
+      const url=new URL('https://api.openweathermap.org/data/2.5/weather');
+      url.searchParams.set('lat',lat);url.searchParams.set('lon',lon);url.searchParams.set('appid',process.env.OPENWEATHER_API_KEY);url.searchParams.set('units','metric');
+      const r=await fetch(url,{signal:AbortSignal.timeout(10000)}),d=await r.json();
+      if(r.ok)return res.json({city:d.name||'Open ocean',country:d.sys?.country||'',temperature:d.main?.temp,feels_like:d.main?.feels_like,humidity:d.main?.humidity,description:d.weather?.[0]?.description||'Current conditions',icon:d.weather?.[0]?.icon,wind:d.wind?.speed});
+      providerError='OpenWeather HTTP '+r.status+': '+(d.message||'provider error');
+      console.warn(providerError);
+    }catch(e){providerError='OpenWeather: '+e.message;console.warn(providerError)}
+  }else providerError='OPENWEATHER_API_KEY is not configured';
+  try{
+    const url=new URL('https://api.open-meteo.com/v1/forecast');
+    url.searchParams.set('latitude',lat);url.searchParams.set('longitude',lon);url.searchParams.set('current','temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m');url.searchParams.set('timezone','auto');
+    const r=await fetch(url,{signal:AbortSignal.timeout(10000)}),d=await r.json();
+    if(!r.ok||!d.current)throw new Error('Open-Meteo HTTP '+r.status);
+    const c=d.current,code=Number(c.weather_code),description=code===0?'clear sky':code<=3?'partly cloudy':code<=48?'fog':code<=67?'rain':code<=77?'snow':code<=82?'rain showers':code<=86?'snow showers':code<=99?'thunderstorm':'weather conditions';
+    return res.json({city:'Local area',country:'',temperature:c.temperature_2m,feels_like:c.apparent_temperature,humidity:c.relative_humidity_2m,description,wind:c.wind_speed_10m,source:'Open-Meteo',fallback:true,providerWarning:providerError});
+  }catch(e){console.error('All weather providers failed:',providerError,e.message);return res.status(502).json({error:'Weather providers unavailable.',detail:e.message,primary:providerError})}
 });
 
 app.get('/api/config', (_req, res) => res.json({ cesiumIonToken: process.env.CESIUM_ION_TOKEN || '', openWeatherConfigured: Boolean(process.env.OPENWEATHER_API_KEY), openWeatherKey: process.env.OPENWEATHER_API_KEY || '' }));
