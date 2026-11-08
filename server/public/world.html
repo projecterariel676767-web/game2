@@ -158,22 +158,29 @@ input[type=range]{width:100%;accent-color:#62e6c5}
   viewer.scene.requestRender();
  }
  async function placeVehicle(lat,lon){
-  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return;
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return undefined;
+  let position=Cesium.Cartesian3.fromDegrees(lon,lat,2);
   try{
    if(vehiclePrimitive){viewer.scene.primitives.remove(vehiclePrimitive);vehiclePrimitive=null;}
    let height=0;
    try{const c=Cesium.Cartographic.fromDegrees(lon,lat);const sampled=await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider,[c]);if(sampled&&Number.isFinite(sampled[0].height))height=sampled[0].height;}catch(e){console.warn('Terrain height sample unavailable',e)}
-   const position=Cesium.Cartesian3.fromDegrees(lon,lat,height+1.2);
-   const heading=Cesium.Math.toRadians(0);
-   const hpr=new Cesium.HeadingPitchRoll(heading,0,0);
+   position=Cesium.Cartesian3.fromDegrees(lon,lat,height+1.2);
+   const hpr=new Cesium.HeadingPitchRoll(0,0,0);
    const matrix=Cesium.Transforms.headingPitchRollToFixedFrame(position,hpr);
-   const uri='https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb';
-   vehiclePrimitive=await Cesium.Model.fromGltfAsync({url:uri,modelMatrix:matrix,scale:1.15,minimumPixelSize:48,maximumScale:250});
+   const id=params.get('vehicleId')||params.get('vehicle')||'sports-coupe';
+   const assets={
+    'mini-ev':'ToyCar','hatchback':'ToyCar','golf-cart':'ToyCar',
+    'ice-cream-truck':'CesiumMilkTruck','delivery-van':'CesiumMilkTruck','garbage-truck':'CesiumMilkTruck','tow-truck':'CesiumMilkTruck','monster-truck':'CesiumMilkTruck','rescue-vehicle':'CesiumMilkTruck','minivan':'CesiumMilkTruck','camper':'CesiumMilkTruck','pickup':'CesiumMilkTruck',
+    'sports-coupe':'CarConcept','roadster':'CarConcept','family-suv':'CarConcept','family-sedan':'CarConcept','convertible':'CarConcept','limousine':'CarConcept','police-sedan':'CarConcept','taxi':'CarConcept'
+   };
+   const asset=assets[id]||'CarConcept';
+   const uri='https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/'+asset+'/glTF-Binary/'+asset+'.glb';
+   vehiclePrimitive=await Cesium.Model.fromGltfAsync({url:uri,modelMatrix:matrix,scale:asset==='ToyCar'?2.5:1.15,minimumPixelSize:56,maximumScale:250});
    viewer.scene.primitives.add(vehiclePrimitive);
-   setStatus('Vehicle on route · '+(params.get('vehicleName')||'Selected vehicle'));
+   setStatus('Vehicle model · '+(params.get('vehicleName')||id));
    viewer.scene.requestRender();
-   return position;
-  }catch(e){console.error('Vehicle model failed to load',e);setStatus('Vehicle 3D model could not load: '+(e.message||e))}
+  }catch(e){console.error('Vehicle model failed to load',e);setStatus('Vehicle model unavailable · '+(e.message||e))}
+  return position;
  }
  function globalView(){viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(0,15,24500000),orientation:{heading:0,pitch:-Cesium.Math.PI_OVER_TWO,roll:0},duration:1.2})}
  try{
