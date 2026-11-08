@@ -70,7 +70,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
 (async()=>{
  const $=id=>document.getElementById(id),status=$('status'),params=new URLSearchParams(location.search);
  let viewer,vehiclePrimitive=null,buildingRelief=[],weatherLayer=null,currentBase='aerial',currentTerrain='world',currentWeather='none',weatherAlpha=Math.max(0,Math.min(1,Number(params.get('opacity')||.85))),ionToken='';
- let playerLat=Number(params.get('lat'))||0,playerLon=Number(params.get('lon'))||0,vehiclePosition=null,flagBillboard=null,flagPole=null,mapViewer=null,voiceSocket=null,voiceRecorder=null,voiceStream=null,voiceChunks=[],voiceListening=false,localMinutes=720,timeTouched=false;
+ let hasPlayerPosition=params.has('lat')&&params.has('lon')&&Number.isFinite(Number(params.get('lat')))&&Number.isFinite(Number(params.get('lon'))),playerLat=Number(params.get('lat'))||0,playerLon=Number(params.get('lon'))||0,vehiclePosition=null,flagBillboard=null,flagPole=null,mapViewer=null,voiceSocket=null,voiceRecorder=null,voiceStream=null,voiceChunks=[],voiceListening=false,localMinutes=720,timeTouched=false;
  const pad=n=>String(n).padStart(2,'0');
  function updateLocalClock(){
   const d=new Date(),offset=Math.round(playerLon/15),utcMinutes=d.getUTCHours()*60+d.getUTCMinutes(),mins=timeTouched?localMinutes:(utcMinutes+offset*60+1440)%1440;
@@ -154,7 +154,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  }
  function movePlayer(lat,lon){
   if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return;
-  playerLat=lat;playerLon=lon;timeTouched=false;
+  playerLat=lat;playerLon=lon;hasPlayerPosition=true;timeTouched=false;
   if(voiceSocket?.connected)voiceSocket.emit('player:update',{nickname:params.get('nickname')||'Driver',vehicleId:params.get('vehicleId')||params.get('vehicle')||'sports-coupe',lat,lon,heading:0});
   placeVehicle(lat,lon).then(p=>{vehiclePosition=p;updateMiniMap();updateCountryFlag()});
   loadBuildingRelief(lat,lon);
@@ -371,7 +371,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
    const position=Cesium.Cartesian3.fromDegrees(lon,lat,0);
    viewer.entities.add({position,point:{pixelSize:13,color:Cesium.Color.fromCssColorString('#62e6c5'),outlineColor:Cesium.Color.WHITE,outlineWidth:2},label:{text:'Destination',font:'14px sans-serif',fillColor:Cesium.Color.WHITE,showBackground:true}});
    const cm=params.get('camera')||'driver';
-   const vehiclePosition=await placeVehicle(lat,lon);
+   vehiclePosition=await placeVehicle(lat,lon);
    if(cm==='free'){
     viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(lon,lat,1800),orientation:{heading:0,pitch:Cesium.Math.toRadians(-35),roll:0},duration:1.4});
    }else{
@@ -396,11 +396,9 @@ input[type=range]{width:100%;accent-color:#62e6c5}
    const selected={type:'routeSelected',lat,lon,label:lat.toFixed(5)+', '+lon.toFixed(5)};
    try{const g=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+lat+'&longitude='+lon+'&localityLanguage=en').then(r=>r.json());selected.label=g.locality||g.city||g.countryName||selected.label;$('status').textContent='Selected · '+selected.label;if(window.parent&&window.parent!==window)window.parent.postMessage(selected,'*');if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(selected))}catch(e){console.warn('Reverse geocode unavailable',e)}
   },Cesium.ScreenSpaceEventType.LEFT_CLICK);
-  if(params.has('lat')&&params.has('lon')&&Number.isFinite(playerLat)&&Number.isFinite(playerLon)){
-   vehiclePosition=await placeVehicle(playerLat,playerLon);updateCountryFlag();loadBuildingRelief(playerLat,playerLon);
-  }
+  if(hasPlayerPosition){updateCountryFlag();}
   voiceSocket=io({transports:['polling'],upgrade:false,reconnection:true});
-  voiceSocket.on('connect',()=>{voiceSocket.emit('player:update',{nickname:params.get('nickname')||'Driver',vehicleId:params.get('vehicleId')||params.get('vehicle')||'sports-coupe',lat:playerLat,lon:playerLon,heading:0});if(voiceListening)voiceSocket.emit('voice:listen',true)});
+  voiceSocket.on('connect',()=>{if(hasPlayerPosition)voiceSocket.emit('player:update',{nickname:params.get('nickname')||'Driver',vehicleId:params.get('vehicleId')||params.get('vehicle')||'sports-coupe',lat:playerLat,lon:playerLon,heading:0});if(voiceListening)voiceSocket.emit('voice:listen',true)});
   voiceSocket.on('voice:message',payload=>{
    if(!voiceListening||!payload?.audio)return;
    const audio=new Audio(payload.audio);audio.play().catch(e=>{$('voiceStatus').textContent='Tap the panel once to allow audio playback.'});
