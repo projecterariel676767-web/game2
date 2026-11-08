@@ -14,7 +14,7 @@ const app = express();
 const audioUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 const server = http.createServer(app);
 const corsOptions = { origin: true, methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'], optionsSuccessStatus: 204 };
-const io = new Server(server, { cors: corsOptions });
+const io = new Server(server, { cors: corsOptions, transports: ['polling','websocket'], pingInterval: 25000, pingTimeout: 60000, connectTimeout: 30000, upgradeTimeout: 30000 });
 // Reflect the requesting web origin (no cookies/credentials are used by this API).
 // This avoids stale CLIENT_ORIGIN settings blocking the /preview host.
 app.use(cors(corsOptions));
