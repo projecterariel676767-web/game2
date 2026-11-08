@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Pin Drive",
+    "slug": "pin-drive",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "dark",
+    "scheme": "pindrive",
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.projecterariel.pindrive" },
+    "android": { "package": "com.projecterariel.pindrive", "versionCode": 1, "permissions": ["INTERNET"] },
+    "web": { "bundler": "metro", "name": "Pin Drive" },
+    "plugins": ["expo-secure-store"],
+    "extra": { "apiUrl": "https://pin-drive.onrender.com" }
+  }
+}
