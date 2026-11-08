@@ -14,11 +14,35 @@ label{display:flex;justify-content:space-between;font-size:11px;color:#c8d9e7;ma
 input[type=range]{width:100%;accent-color:#62e6c5}
 .small{font-size:10px;color:#8fa9bd;line-height:1.45;margin-top:5px}\n.cesium-viewer-timelineContainer{height:34px!important;bottom:0!important}\n.cesium-viewer-animationContainer{bottom:35px!important}\n.cesium-viewer-bottom{bottom:35px!important}
 #mapTools{position:absolute;z-index:10;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+#worldPills{position:absolute;z-index:30;left:50%;bottom:48px;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(96%,720px);pointer-events:auto}
+.world-pill{border:1px solid #355b72;background:rgba(5,19,31,.92);color:#eaf7fb;border-radius:22px;padding:10px 15px;font-size:12px;font-weight:800;box-shadow:0 5px 18px #0008;backdrop-filter:blur(10px)}
+.world-pill.active{border-color:#62e6c5;background:#12433f}
+.float-panel{position:absolute;z-index:40;display:none;left:50%;top:50%;transform:translate(-50%,-50%);width:min(340px,calc(100vw - 24px));max-height:min(72vh,560px);overflow:auto;background:rgba(7,24,39,.96);border:1px solid #477087;border-radius:15px;color:#eaf7fb;box-shadow:0 18px 55px #000b;backdrop-filter:blur(16px)}
+.float-panel.open{display:block}
+.float-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#102a40;border-bottom:1px solid #31536a;cursor:move;touch-action:none;user-select:none;font-weight:900;color:#62e6c5;letter-spacing:1px;font-size:11px}
+.float-body{padding:14px}
+.float-close{padding:4px 9px;border-radius:7px}
+.float-panel input[type=range]{width:100%;accent-color:#62e6c5}
+#localTimeText{font-size:25px;font-weight:900;color:#fff;margin:8px 0}
+#mapMini{width:100%;height:280px;border-radius:10px;overflow:hidden;border:1px solid #34566b}
+#flagStatus,#voiceStatus{font-size:11px;color:#91aabd;margin-top:8px;line-height:1.4}
+@media(max-width:600px){#worldPills{bottom:44px;gap:5px;width:98%}.world-pill{padding:9px 11px;font-size:11px}.float-panel{width:min(310px,calc(100vw - 18px));max-height:68vh}.float-head{padding:10px 12px}#mapMini{height:230px}}
+
 #mapTools button{background:#071824eF}
 @media(max-width:600px){#earthPanel{top:54px;bottom:auto;left:10px;width:min(270px,calc(100vw - 20px));max-height:calc(100% - 66px);padding:10px}#status{top:8px;left:8px;font-size:10px} #mapTools{top:8px;right:8px}button{padding:7px 6px}}
 </style></head><body>
 <div id="cesiumContainer"></div><div id="status">Starting Cesium…</div>
 <div id="mapTools"><button id="homeBtn">🌍 Global view</button><button id="modeBtn">2D / 3D</button><button id="panelBtn">Cesium layers ▾</button></div>
+<div id="worldPills">
+ <button class="world-pill" data-open="timePanel">◷ TIME</button>
+ <button class="world-pill" data-open="voicePanel">🎙 VOICE CHAT</button>
+ <button class="world-pill" data-open="mapPanel">⌖ MAP</button>
+ <button class="world-pill" data-open="flagPanel">⚑ FLAG</button>
+</div>
+<section class="float-panel" id="timePanel"><div class="float-head">LOCAL TIME AT PLAYER <button class="float-close" data-close>×</button></div><div class="float-body"><div id="localTimeText">--:--:--</div><div id="localDateText" class="small"></div><label>Time of day <strong id="timeSliderValue">12:00</strong></label><input id="timeSlider" type="range" min="0" max="1439" step="1" value="720"><div class="small">Move the slider to change the Cesium lighting and sun position for the player's current longitude.</div></div></section>
+<section class="float-panel" id="voicePanel"><div class="float-head">WORLD VOICE CHAT <button class="float-close" data-close>×</button></div><div class="float-body"><div id="voiceStatus">Open this panel to receive live voice messages from other players who are also listening.</div><button id="voiceListen" class="active">🔊 Listening enabled</button><button id="voiceRecord">🎙 Start recording</button><div class="small">Your voice recording will be broadcast to players who have this panel open.</div></div></section>
+<section class="float-panel" id="mapPanel"><div class="float-head">WORLD MAP <button class="float-close" data-close>×</button></div><div class="float-body"><div id="mapMini"></div><div class="small">Cesium map controls are available inside this map: imagery, terrain and 2D/3D mode. Click to move the player marker.</div><div id="mapPosition" class="small"></div></div></section>
+<section class="float-panel" id="flagPanel"><div class="float-head">PLAYER COUNTRY FLAG <button class="float-close" data-close>×</button></div><div class="float-body"><div id="flagStatus">The flag of the country under the player's vehicle will be displayed above its roof.</div></div></section>
 <aside id="earthPanel">
  <div class="group"><div class="heading">CESIUM BASEMAP</div><div class="buttons" id="baseButtons">
   <button data-base="aerial" class="active">Satellite</button><button data-base="aerial-labels">Satellite + labels</button>
@@ -41,11 +65,110 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  <div class="small">Weather colours are enhanced with higher contrast and saturation for better visibility.</div></div>
  <div class="group"><div class="heading">CAMERA</div><div class="buttons"><button id="freeBtn">Free camera</button><button id="resetBtn">Reset globe</button></div></div>
 </aside>
-<script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js"></script>
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js"></script><script src="/socket.io/socket.io.js"></script>
 <script>
 (async()=>{
  const $=id=>document.getElementById(id),status=$('status'),params=new URLSearchParams(location.search);
  let viewer,vehiclePrimitive=null,buildingRelief=[],weatherLayer=null,currentBase='aerial',currentTerrain='world',currentWeather='none',weatherAlpha=Math.max(0,Math.min(1,Number(params.get('opacity')||.85))),ionToken='';
+ let playerLat=Number(params.get('lat'))||0,playerLon=Number(params.get('lon'))||0,vehiclePosition=null,flagBillboard=null,flagPole=null,mapViewer=null,voiceSocket=null,voiceRecorder=null,voiceStream=null,voiceChunks=[],voiceListening=false,localMinutes=720,timeTouched=false;
+ const pad=n=>String(n).padStart(2,'0');
+ function updateLocalClock(){
+  const d=new Date(),offset=Math.round(playerLon/15),utcMinutes=d.getUTCHours()*60+d.getUTCMinutes(),mins=timeTouched?localMinutes:(utcMinutes+offset*60+1440)%1440;
+  const hh=Math.floor(mins/60),mm=mins%60,ss=timeTouched?0:d.getUTCSeconds();
+  $('localTimeText').textContent=pad(hh)+':'+pad(mm)+':'+pad(ss);
+  $('localDateText').textContent='Longitude '+playerLon.toFixed(3)+'° · UTC'+(offset>=0?'+':'')+offset;
+  if(!timeTouched){$('timeSlider').value=String(mins);$('timeSliderValue').textContent=pad(hh)+':'+pad(mm)}
+ }
+ function setWorldTime(mins){
+  localMinutes=Math.max(0,Math.min(1439,Math.round(mins)));timeTouched=true;
+  const now=new Date(),offset=Math.round(playerLon/15),utc=((localMinutes-offset*60)%1440+1440)%1440;
+  const target=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),Math.floor(utc/60),utc%60,0));
+  viewer.clock.currentTime=Cesium.JulianDate.fromDate(target);viewer.clock.shouldAnimate=false;
+  $('timeSliderValue').textContent=pad(Math.floor(localMinutes/60))+':'+pad(localMinutes%60);
+  $('localTimeText').textContent=pad(Math.floor(localMinutes/60))+':'+pad(localMinutes%60)+':00';
+  viewer.scene.requestRender();
+ }
+ function openFloatPanel(id){
+  document.querySelectorAll('.float-panel').forEach(p=>p.classList.toggle('open',p.id===id&&!p.classList.contains('open')));
+  document.querySelectorAll('.world-pill').forEach(b=>b.classList.toggle('active',document.getElementById(b.dataset.open)?.classList.contains('open')));
+  if(id==='mapPanel'&&document.getElementById(id).classList.contains('open'))setTimeout(initMiniMap,120);
+  if(id==='voicePanel'&&document.getElementById(id).classList.contains('open'))setVoiceListening(true);
+  if(id!=='voicePanel'&&voiceListening)setVoiceListening(false);
+ }
+ function makeDraggable(panel){
+  const head=panel.querySelector('.float-head');let drag=null;
+  head.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;const r=panel.getBoundingClientRect();drag={x:e.clientX-r.left,y:e.clientY-r.top};panel.style.left=r.left+'px';panel.style.top=r.top+'px';panel.style.transform='none';head.setPointerCapture(e.pointerId)});
+  head.addEventListener('pointermove',e=>{if(!drag)return;panel.style.left=Math.max(4,Math.min(innerWidth-panel.offsetWidth-4,e.clientX-drag.x))+'px';panel.style.top=Math.max(4,Math.min(innerHeight-panel.offsetHeight-4,e.clientY-drag.y))+'px'});
+  const stop=()=>drag=null;head.addEventListener('pointerup',stop);head.addEventListener('pointercancel',stop);
+ }
+ async function initMiniMap(){
+  if(mapViewer){mapViewer.resize();mapViewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(playerLon,playerLat,850000),duration:.5});return}
+  try{
+   mapViewer=new Cesium.Viewer('mapMini',{animation:false,timeline:false,baseLayerPicker:true,geocoder:false,homeButton:true,sceneModePicker:true,navigationHelpButton:true,infoBox:false,selectionIndicator:false,baseLayer:false,terrainProvider:new Cesium.EllipsoidTerrainProvider(),sceneMode:Cesium.SceneMode.SCENE3D});
+   if(ionToken){try{mapViewer.terrainProvider=await Cesium.createWorldTerrainAsync()}catch(e){console.warn('Mini map terrain unavailable',e)}}
+   mapViewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',credit:'© OpenStreetMap'}));
+   mapViewer.entities.add({id:'player-marker',position:Cesium.Cartesian3.fromDegrees(playerLon,playerLat),point:{pixelSize:13,color:Cesium.Color.fromCssColorString('#62e6c5'),outlineColor:Cesium.Color.WHITE,outlineWidth:2},label:{text:'YOU',font:'12px sans-serif',pixelOffset:new Cesium.Cartesian2(0,-20),fillColor:Cesium.Color.WHITE,showBackground:true}});
+   mapViewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(playerLon,playerLat,850000),duration:0});
+   mapViewer.screenSpaceEventHandler.setInputAction(m=>{
+    const c=mapViewer.camera.pickEllipsoid(m.position,mapViewer.scene.globe.ellipsoid);if(!c)return;
+    const p=Cesium.Cartographic.fromCartesian(c);movePlayer(Cesium.Math.toDegrees(p.latitude),Cesium.Math.toDegrees(p.longitude));
+   },Cesium.ScreenSpaceEventType.LEFT_CLICK);
+   $('mapPosition').textContent=playerLat.toFixed(5)+', '+playerLon.toFixed(5);
+  }catch(e){console.error('Mini Cesium map failed',e);$('mapPosition').textContent='Map unavailable: '+e.message}
+ }
+ function updateMiniMap(){
+  if(!mapViewer)return;
+  const marker=mapViewer.entities.getById('player-marker');
+  if(marker)marker.position=Cesium.Cartesian3.fromDegrees(playerLon,playerLat);
+  $('mapPosition').textContent=playerLat.toFixed(5)+', '+playerLon.toFixed(5);
+ }
+ async function updateCountryFlag(){
+  try{
+   const r=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+playerLat+'&longitude='+playerLon+'&localityLanguage=en');
+   if(!r.ok)throw new Error('Country lookup HTTP '+r.status);
+   const g=await r.json(),code=String(g.countryCode||'').toLowerCase();
+   if(!/^[a-z]{2}$/.test(code))throw new Error('No country at current coordinates');
+   const url='https://flagcdn.com/w160/'+code+'.png';
+   const image=new Image();image.crossOrigin='anonymous';image.onload=()=>{
+    const position=new Cesium.CallbackProperty(()=>vehiclePosition?Cesium.Cartesian3.add(vehiclePosition,Cesium.Cartesian3.multiplyByScalar(Cesium.Cartesian3.normalize(vehiclePosition,new Cesium.Cartesian3()),5,new Cesium.Cartesian3()),new Cesium.Cartesian3()):Cesium.Cartesian3.fromDegrees(playerLon,playerLat,8),false);
+    if(flagBillboard)viewer.entities.remove(flagBillboard);if(flagPole)viewer.entities.remove(flagPole);
+    flagPole=viewer.entities.add({position, cylinder:{length:5,topRadius:.035,bottomRadius:.035,material:Cesium.Color.fromCssColorString('#c7d3dc')}});
+    flagBillboard=viewer.entities.add({position,billboard:{image:url,width:46,height:30,verticalOrigin:Cesium.VerticalOrigin.BOTTOM,rotation:new Cesium.CallbackProperty(t=>Math.sin(Cesium.JulianDate.secondsDifference(t,Cesium.JulianDate.now())*2.8)*.13,false),scaleByDistance:new Cesium.NearFarScalar(20,1,2500,.35)}});
+   };
+   image.onerror=()=>{throw new Error('Flag image failed to load')};image.src=url;
+   $('flagStatus').textContent=(g.countryName||code.toUpperCase())+' · '+code.toUpperCase()+' · flag attached above the vehicle';
+  }catch(e){$('flagStatus').textContent='Country flag unavailable: '+e.message}
+ }
+ function movePlayer(lat,lon){
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return;
+  playerLat=lat;playerLon=lon;timeTouched=false;
+  placeVehicle(lat,lon).then(p=>{vehiclePosition=p;updateMiniMap();updateCountryFlag()});
+  loadBuildingRelief(lat,lon);
+  if(mapViewer)mapViewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(lon,lat,850000),duration:.45});
+  const selected={type:'routeSelected',lat,lon,label:lat.toFixed(5)+', '+lon.toFixed(5)};
+  if(window.parent&&window.parent!==window)window.parent.postMessage(selected,'*');
+  if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(selected));
+ }
+ function setVoiceListening(enabled){
+  voiceListening=enabled;if(voiceSocket)voiceSocket.emit('voice:listen',enabled);
+  $('voiceListen').textContent=enabled?'🔊 Listening enabled':'🔇 Listening paused';
+ }
+ async function startVoiceRecording(){
+  try{
+   if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw new Error('Voice recording is not supported in this browser.');
+   voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
+   voiceRecorder=new MediaRecorder(voiceStream);voiceChunks=[];
+   voiceRecorder.ondataavailable=e=>{if(e.data&&e.data.size)voiceChunks.push(e.data)};
+   voiceRecorder.onstop=()=>{
+    const blob=new Blob(voiceChunks,{type:voiceRecorder.mimeType||'audio/webm'});
+    const reader=new FileReader();reader.onload=()=>{if(voiceSocket&&voiceSocket.connected)voiceSocket.emit('voice:send',{nickname:params.get('nickname')||'Driver',audio:reader.result,mime:blob.type});$('voiceStatus').textContent='Voice message sent to '+(voiceListening?'listeners':'world listeners')+'.'};
+    reader.readAsDataURL(blob);voiceStream?.getTracks().forEach(t=>t.stop());voiceStream=null;
+   };
+   voiceRecorder.start();$('voiceRecord').textContent='■ Stop and send';$('voiceStatus').textContent='Recording… speak now';
+  }catch(e){$('voiceStatus').textContent=e.message||String(e)}
+ }
+ function stopVoiceRecording(){if(voiceRecorder&&voiceRecorder.state==='recording'){voiceRecorder.stop();$('voiceRecord').textContent='🎙 Start recording'}}
+
  const setStatus=t=>status.textContent=t;
  const styleButtons=(root,attr,value)=>root.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset[attr]===value));
  const ionReady=()=>Boolean(ionToken);
@@ -255,14 +378,29 @@ input[type=range]{width:100%;accent-color:#62e6c5}
    const cart=viewer.camera.pickEllipsoid(movement.position,viewer.scene.globe.ellipsoid);if(!cart)return;
    const c=Cesium.Cartographic.fromCartesian(cart);if(!c||!Number.isFinite(c.latitude)||!Number.isFinite(c.longitude))return;
    const lat=Cesium.Math.toDegrees(c.latitude),lon=Cesium.Math.toDegrees(c.longitude);
-   await placeVehicle(lat,lon);
+   movePlayer(lat,lon);
    const selected={type:'routeSelected',lat,lon,label:lat.toFixed(5)+', '+lon.toFixed(5)};
-   if(window.parent&&window.parent!==window)window.parent.postMessage(selected,'*');
-   if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(selected));
    try{const g=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+lat+'&longitude='+lon+'&localityLanguage=en').then(r=>r.json());selected.label=g.locality||g.city||g.countryName||selected.label;$('status').textContent='Selected · '+selected.label;if(window.parent&&window.parent!==window)window.parent.postMessage(selected,'*');if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(selected))}catch(e){console.warn('Reverse geocode unavailable',e)}
   },Cesium.ScreenSpaceEventType.LEFT_CLICK);
-  setStatus('Cesium Earth ready · use Cesium layers to change imagery, terrain and weather');
-  window.pinDriveViewer=viewer;
+  if(params.has('lat')&&params.has('lon')&&Number.isFinite(playerLat)&&Number.isFinite(playerLon)){
+   vehiclePosition=await placeVehicle(playerLat,playerLon);updateCountryFlag();loadBuildingRelief(playerLat,playerLon);
+  }
+  voiceSocket=io({transports:['polling'],upgrade:false,reconnection:true});
+  voiceSocket.on('connect',()=>{if(voiceListening)voiceSocket.emit('voice:listen',true)});
+  voiceSocket.on('voice:message',payload=>{
+   if(!voiceListening||!payload?.audio)return;
+   const audio=new Audio(payload.audio);audio.play().catch(e=>{$('voiceStatus').textContent='Tap the panel once to allow audio playback.'});
+   $('voiceStatus').textContent='Live voice from '+(payload.nickname||'Player');
+  });
+  document.querySelectorAll('.world-pill').forEach(b=>b.addEventListener('click',()=>openFloatPanel(b.dataset.open)));
+  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{b.closest('.float-panel').classList.remove('open');document.querySelectorAll('.world-pill').forEach(x=>x.classList.remove('active'));if(b.closest('#voicePanel'))setVoiceListening(false)}));
+  document.querySelectorAll('.float-panel').forEach(makeDraggable);
+  $('timeSlider').addEventListener('input',e=>setWorldTime(Number(e.target.value)));
+  $('voiceListen').onclick=()=>setVoiceListening(!voiceListening);
+  $('voiceRecord').onclick=()=>voiceRecorder&&voiceRecorder.state==='recording'?stopVoiceRecording():startVoiceRecording();
+  setInterval(updateLocalClock,1000);updateLocalClock();
+  setStatus('Cesium Earth ready · use the four floating world panels');
+  window.pinDriveViewer=viewer;window.pinDriveMovePlayer=movePlayer;
  }catch(e){console.error('Cesium initialization failed',e);setStatus('Cesium error: '+(e?.message||String(e)))}
 })();
 </script></body></html>
