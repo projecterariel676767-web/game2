@@ -49,7 +49,7 @@ app.post('/api/ai/message', requireAuth, async (req, res) => {
   } catch (error) { res.status(502).json({ error: error.message }); }
 });
 
-app.get('/api/config', (_req, res) => res.json({ cesiumIonToken: process.env.CESIUM_ION_TOKEN || '', openWeatherConfigured: Boolean(process.env.OPENWEATHER_API_KEY) }));
+app.get('/api/config', (_req, res) => res.json({ cesiumIonToken: process.env.CESIUM_ION_TOKEN || '', openWeatherConfigured: Boolean(process.env.OPENWEATHER_API_KEY), openWeatherKey: process.env.OPENWEATHER_API_KEY || '' }));
 app.get('/api/geocode', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q || q.length > 160) return res.status(400).json({ error: 'Enter a place name or coordinates.' });
