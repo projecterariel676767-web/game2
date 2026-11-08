@@ -121,7 +121,12 @@ app.get('/api/geocode', async (req, res) => {
 });
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-app.use('/preview', express.static(path.join(here, '../../mobile/dist')));
+const webExport = path.join(here, '../../mobile/dist');
+// Expo's web export emits root-absolute /_expo and /assets URLs. The app itself
+// is mounted under /preview, so expose those generated assets at the root too.
+app.use('/_expo', express.static(path.join(webExport, '_expo'), { fallthrough: true, maxAge: '1h' }));
+app.use('/assets', express.static(path.join(webExport, 'assets'), { fallthrough: true, maxAge: '1h' }));
+app.use('/preview', express.static(webExport));
 app.use('/preview', express.static(path.join(here, '../public')));
 app.get('/preview', (_req, res) => res.sendFile(path.join(here, '../public/preview.html')));
 app.get('/', (_req, res) => res.redirect('/preview'));
