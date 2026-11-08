@@ -113,7 +113,7 @@ app.get('/api/geocode', async (req, res) => {
   try {
     const url = new URL('https://nominatim.openstreetmap.org/search');
     url.searchParams.set('q', q); url.searchParams.set('format', 'jsonv2'); url.searchParams.set('limit', '1');
-    const r = await fetch(url, { headers: { 'User-Agent': 'PinDrive/1.0 contact: support@pindrive.app' } });
+    const r = await fetch(url, { headers: { 'User-Agent': 'PinDrive/1.0' } });
     const data = await r.json();
     if (!data[0]) return res.status(404).json({ error: 'Location not found.' });
     res.json({ lat: Number(data[0].lat), lon: Number(data[0].lon), label: data[0].display_name });
