@@ -1,54 +1,155 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pin Drive World</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pin Drive · Cesium Earth</title>
 <link href="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
-<style>html,body,#cesiumContainer{width:100%;height:100%;margin:0;padding:0;overflow:hidden;background:#06111b}#status{position:absolute;z-index:5;top:12px;left:12px;padding:8px 12px;background:#071824dd;color:#dff;font:12px Arial;border:1px solid #2d5262;border-radius:8px}.hud{position:absolute;z-index:6;top:54px;width:150px;background:#0a1a27eF;border:1px solid #2d5262;border-radius:10px;color:#eaf7fb;font:12px Arial;box-shadow:0 8px 25px #0006}.hud header{padding:8px 10px;background:#142c3a;cursor:move;border-radius:9px 9px 0 0;color:#62e6c5;font-weight:bold}.hud .body{padding:10px}.hud button{background:#153b3b;border:1px solid #62e6c5;color:#eafffa;border-radius:6px;padding:6px 8px;margin:2px}.hud input{width:100%}#timeHud{left:12px}#voiceHud{left:174px}#mapHud{left:336px}#flagHud{left:498px}#flagImage{width:30px;height:20px;object-fit:cover;vertical-align:middle;margin-right:7px}</style></head>
-<body><div id="cesiumContainer"></div><div id="status">Loading Cesium world…</div><section class="hud" id="timeHud"><header>TIME · drag</header><div class="body"><div id="timeLabel">12:00</div><input id="timeSlider" type="range" min="0" max="24" step=".25" value="12"></div></section><section class="hud" id="voiceHud"><header>VOICE · drag</header><div class="body"><button id="voiceButton">Start voice</button><div id="voiceText">Voice control</div></div></section><section class="hud" id="mapHud"><header>MAP · drag</header><div class="body"><button id="modeButton">Switch 2D / 3D</button><div id="mapMode">3D globe</div></div></section><section class="hud" id="flagHud"><header>FLAG · drag</header><div class="body"><div id="flagText">Click the map</div></div></section>
+<style>
+*{box-sizing:border-box}html,body,#cesiumContainer{width:100%;height:100%;margin:0;overflow:hidden;background:#06111b;font-family:Inter,system-ui,Arial}
+#status{position:absolute;z-index:20;top:12px;left:12px;padding:8px 12px;background:#071824eF;color:#dff;border:1px solid #2d5262;border-radius:9px;font-size:12px;max-width:calc(100% - 24px)}
+#earthPanel{position:absolute;z-index:15;top:54px;left:12px;width:min(310px,calc(100vw - 24px));max-height:calc(100% - 70px);overflow:auto;background:#081a2bee;color:#eaf7fb;border:1px solid #31536a;border-radius:13px;box-shadow:0 12px 32px #0008;padding:13px;backdrop-filter:blur(12px)}
+.heading{font-size:11px;font-weight:900;letter-spacing:1.5px;color:#62e6c5;margin:2px 0 9px}
+.group{margin:0 0 13px}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button{background:#132e43;border:1px solid #31536a;color:#eaf7fb;border-radius:8px;padding:8px 7px;font-size:11px;cursor:pointer}
+button.active{background:#15504b;border-color:#62e6c5;color:#fff;box-shadow:0 0 12px #62e6c533}
+label{display:flex;justify-content:space-between;font-size:11px;color:#c8d9e7;margin:8px 0 5px}
+input[type=range]{width:100%;accent-color:#62e6c5}
+.small{font-size:10px;color:#8fa9bd;line-height:1.45;margin-top:5px}
+#mapTools{position:absolute;z-index:10;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+#mapTools button{background:#071824eF}
+@media(max-width:600px){#earthPanel{top:auto;bottom:10px;left:10px;width:min(280px,calc(100vw - 20px));max-height:48%;padding:10px}#status{top:8px;left:8px;font-size:10px}#mapTools{top:8px;right:8px}button{padding:7px 6px}}
+</style></head><body>
+<div id="cesiumContainer"></div><div id="status">Starting Cesium…</div>
+<div id="mapTools"><button id="homeBtn">🌍 Global view</button><button id="modeBtn">2D / 3D</button></div>
+<aside id="earthPanel">
+ <div class="group"><div class="heading">CESIUM BASEMAP</div><div class="buttons" id="baseButtons">
+  <button data-base="aerial" class="active">Satellite</button><button data-base="aerial-labels">Satellite + labels</button>
+  <button data-base="road">Road map</button><button data-base="osm">OpenStreetMap</button>
+  <button data-base="arcgis">ArcGIS imagery</button><button data-base="none">No imagery</button>
+ </div><div class="small">Cesium ion imagery uses your CESIUM_ION_TOKEN. OpenStreetMap and ArcGIS are fallback providers.</div></div>
+ <div class="group"><div class="heading">TERRAIN</div><div class="buttons" id="terrainButtons">
+  <button data-terrain="world" class="active">Cesium World Terrain</button><button data-terrain="ellipsoid">Ellipsoid</button>
+ </div></div>
+ <div class="group"><div class="heading">OPENWEATHER LAYERS</div><div class="buttons" id="weatherButtons">
+  <button data-weather="none" class="active">Off</button><button data-weather="clouds">Clouds</button>
+  <button data-weather="precipitation">Precipitation</button><button data-weather="temperature">Temperature</button>
+  <button data-weather="pressure">Pressure</button><button data-weather="wind">Wind</button>
+ </div>
+ <label for="opacity">Layer opacity <strong id="opacityValue">85%</strong></label><input id="opacity" type="range" min="0" max="100" value="85" step="1">
+ <div class="small">Weather colours are enhanced with higher contrast and saturation for better visibility.</div></div>
+ <div class="group"><div class="heading">CAMERA</div><div class="buttons"><button id="freeBtn">Free camera</button><button id="resetBtn">Reset globe</button></div></div>
+</aside>
 <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js"></script>
 <script>
 (async()=>{
- const status=document.getElementById('status');
- const params=new URLSearchParams(location.search);
+ const $=id=>document.getElementById(id),status=$('status'),params=new URLSearchParams(location.search);
+ let viewer,weatherLayer=null,currentBase='aerial',currentTerrain='world',currentWeather='none',weatherAlpha=.85,ionToken='';
+ const setStatus=t=>status.textContent=t;
+ const styleButtons=(root,attr,value)=>root.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset[attr]===value));
+ const ionReady=()=>Boolean(ionToken);
+ const fallbackProvider=kind=>{
+  if(kind==='arcgis')return new Cesium.ArcGisMapServerImageryProvider({url:'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'});
+  if(kind==='osm')return new Cesium.UrlTemplateImageryProvider({url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',credit:'© OpenStreetMap contributors',maximumLevel:19});
+  return new Cesium.UrlTemplateImageryProvider({url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',credit:'© OpenStreetMap contributors',maximumLevel:19});
+ };
+ async function makeBase(kind){
+  if(!viewer)return;
+  currentBase=kind;styleButtons($('baseButtons'),'base',kind);
+  viewer.imageryLayers.removeAll(true);
+  if(kind==='none'){setStatus('Cesium · no imagery');return}
+  let provider;
+  try{
+   if(kind==='aerial'||kind==='aerial-labels'||kind==='road'){
+    if(!ionReady())throw new Error('Cesium ion token missing');
+    const id=kind==='aerial'?2:kind==='aerial-labels'?3:4;
+    provider=await Cesium.IonImageryProvider.fromAssetId(id);
+   }else provider=fallbackProvider(kind);
+  }catch(e){
+   console.warn('Basemap provider fallback:',e);
+   provider=fallbackProvider(kind==='arcgis'?'arcgis':'osm');
+   setStatus('Cesium imagery fallback · add CESIUM_ION_TOKEN for Cesium ion styles');
+  }
+  const layer=viewer.imageryLayers.addImageryProvider(provider);
+  layer.alpha=1;
+  if(kind==='aerial-labels'&&ionReady()){
+   try{const labels=await Cesium.IonImageryProvider.fromAssetId(3);viewer.imageryLayers.addImageryProvider(labels).alpha=.95}catch(e){console.warn(e)}
+  }
+  if(kind!=='aerial-labels')setStatus('Cesium Earth · '+kind+' imagery');
+  viewer.scene.requestRender();
+ }
+ async function setTerrain(kind){
+  currentTerrain=kind;styleButtons($('terrainButtons'),'terrain',kind);
+  try{
+   if(kind==='world'&&ionReady()){
+    const p=await Cesium.createWorldTerrainAsync({requestVertexNormals:true,requestWaterMask:true});
+    viewer.terrainProvider=p;
+    setStatus('Cesium World Terrain enabled');
+   }else{
+    viewer.terrainProvider=new Cesium.EllipsoidTerrainProvider();
+    setStatus(kind==='world'?'World Terrain needs CESIUM_ION_TOKEN · using ellipsoid':'Ellipsoid terrain enabled');
+   }
+  }catch(e){console.warn('Terrain fallback:',e);viewer.terrainProvider=new Cesium.EllipsoidTerrainProvider();setStatus('Terrain unavailable · using ellipsoid')}
+  viewer.scene.globe.show=true;viewer.scene.requestRender();
+ }
+ function setWeather(kind){
+  currentWeather=kind;styleButtons($('weatherButtons'),'weather',kind);
+  if(weatherLayer){viewer.imageryLayers.remove(weatherLayer,true);weatherLayer=null}
+  if(kind==='none'){viewer.scene.requestRender();return}
+  const cfg=window.pinDriveConfig||{};
+  if(!cfg.openWeatherKey){setStatus('Add OPENWEATHER_API_KEY in Render to enable weather tiles');return}
+  const tile={clouds:'clouds_new',precipitation:'precipitation_new',temperature:'temp_new',pressure:'pressure_new',wind:'wind_new'}[kind];
+  const provider=new Cesium.UrlTemplateImageryProvider({
+   url:'https://tile.openweathermap.org/map/'+tile+'/{z}/{x}/{y}.png?appid='+encodeURIComponent(cfg.openWeatherKey),
+   credit:'OpenWeather',maximumLevel:18
+  });
+  weatherLayer=viewer.imageryLayers.addImageryProvider(provider);
+  weatherLayer.alpha=weatherAlpha;
+  weatherLayer.brightness=kind==='temperature'?1.35:kind==='precipitation'?1.25:kind==='pressure'?1.3:1.18;
+  weatherLayer.contrast=kind==='temperature'?1.65:kind==='precipitation'?1.55:kind==='pressure'?1.6:1.4;
+  weatherLayer.saturation=kind==='clouds'?1.65:kind==='temperature'?1.8:kind==='precipitation'?1.75:1.5;
+  weatherLayer.gamma=.88;
+  viewer.scene.requestRender();
+ }
+ function globalView(){viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(0,15,24500000),orientation:{heading:0,pitch:-Cesium.Math.PI_OVER_TWO,roll:0},duration:1.2})}
  try{
-  const cfg=await fetch('/api/config').then(r=>r.json());
-  if(cfg.cesiumIonToken) Cesium.Ion.defaultAccessToken=cfg.cesiumIonToken;
-  const terrain=cfg.cesiumIonToken?await Cesium.createWorldTerrainAsync({requestVertexNormals:true,requestWaterMask:true}).catch(()=>new Cesium.EllipsoidTerrainProvider()):new Cesium.EllipsoidTerrainProvider();
-  const viewer=new Cesium.Viewer('cesiumContainer',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:false,sceneModePicker:true,navigationHelpButton:false,infoBox:false,selectionIndicator:false,terrainProvider:terrain,baseLayer:false});
-  const imagery=viewer.imageryLayers;
-  const earth=params.get('earth')||'satellite';
-  const opacity=Number(params.get('opacity')||0.65);
-  let base;
-  if(earth==='satellite'||earth==='satellite-labels'){
-   base=imagery.addImageryProvider(new Cesium.UrlTemplateImageryProvider({url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',credit:'Esri World Imagery'}));
-   if(earth==='satellite-labels') imagery.addImageryProvider(new Cesium.UrlTemplateImageryProvider({url:'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',credit:'Esri labels'}));
-  }else if(earth==='roads'){
-   base=imagery.addImageryProvider(new Cesium.UrlTemplateImageryProvider({url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',credit:'© OpenStreetMap contributors'}));
-  }else{
-   base=imagery.addImageryProvider(new Cesium.UrlTemplateImageryProvider({url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',credit:'© OpenStreetMap contributors'}));
-  }
-  const weather=params.get('weather')||'none';
-  const weatherMap={clouds:'clouds_new',precipitation:'precipitation_new',temperature:'temp_new',wind:'wind_new',pressure:'pressure_new'};
-  if(weatherMap[weather]&&cfg.openWeatherKey){
-   imagery.addImageryProvider(new Cesium.UrlTemplateImageryProvider({url:'https://tile.openweathermap.org/map/'+weatherMap[weather]+'/{z}/{x}/{y}.png?appid='+encodeURIComponent(cfg.openWeatherKey),credit:'OpenWeather'})).alpha=opacity;
-  }
-  viewer.scene.globe.showWaterEffect=true;viewer.scene.skyAtmosphere.show=true;viewer.scene.globe.enableLighting=true;
-  if(cfg.cesiumIonToken){try{const buildings=await Cesium.createOsmBuildingsAsync();viewer.scene.primitives.add(buildings)}catch(e){console.warn('3D buildings unavailable',e)}}
+  const cfg=await fetch('/api/config').then(r=>{if(!r.ok)throw Error('Config unavailable');return r.json()});
+  window.pinDriveConfig=cfg;ionToken=cfg.cesiumIonToken||'';
+  if(ionToken)Cesium.Ion.defaultAccessToken=ionToken;
+  const terrainProvider=new Cesium.EllipsoidTerrainProvider();
+  viewer=new Cesium.Viewer('cesiumContainer',{
+   animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:false,
+   sceneModePicker:false,navigationHelpButton:false,infoBox:false,selectionIndicator:false,
+   terrainProvider,baseLayer:false,shouldAnimate:false
+  });
+  viewer.scene.globe.show=true;viewer.scene.globe.enableLighting=true;viewer.scene.globe.showGroundAtmosphere=true;
+  viewer.scene.skyAtmosphere.show=true;viewer.scene.globe.depthTestAgainstTerrain=false;
+  viewer.scene.screenSpaceCameraController.enableCollisionDetection=true;
+  viewer.camera.setView({destination:Cesium.Cartesian3.fromDegrees(0,15,24500000),orientation:{heading:0,pitch:-Cesium.Math.PI_OVER_TWO,roll:0}});
+  await makeBase(params.get('earth')||'aerial');
+  if(ionToken)await setTerrain('world');else setTerrain('ellipsoid');
   const lat=Number(params.get('lat')),lon=Number(params.get('lon'));
-  if(Number.isFinite(lat)&&Number.isFinite(lon)){
-   viewer.entities.add({position:Cesium.Cartesian3.fromDegrees(lon,lat,0),point:{pixelSize:13,color:Cesium.Color.fromCssColorString('#62e6c5'),outlineColor:Cesium.Color.WHITE,outlineWidth:2},label:{text:'Destination',font:'14px sans-serif',fillColor:Cesium.Color.WHITE,showBackground:true}});
-   const cameraMode=params.get('camera')||'free';const cameraHeight=cameraMode==='driver'?8:(cameraMode==='chase'?45:1800);viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(lon,lat,cameraHeight),orientation:{heading:0,pitch:Cesium.Math.toRadians(cameraMode==='driver'?-4:(cameraMode==='chase'?-18:-35)),roll:0}});
-  }else viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(0,15,22000000),orientation:{heading:0,pitch:-Cesium.Math.PI_OVER_TWO,roll:0},duration:1.4});
-  
-  status.textContent='Cesium ready · drag to orbit · wheel to zoom'+(cfg.cesiumIonToken?' · terrain & buildings':' · add CESIUM_ION_TOKEN for terrain');
-  // Four movable HUD panels: Time, Voice, Map and Flag.
-  document.querySelectorAll('.hud').forEach(panel=>{const handle=panel.querySelector('header');let dx=0,dy=0,drag=false;handle.addEventListener('pointerdown',e=>{drag=true;const r=panel.getBoundingClientRect();dx=e.clientX-r.left;dy=e.clientY-r.top;handle.setPointerCapture(e.pointerId)});handle.addEventListener('pointermove',e=>{if(!drag)return;panel.style.left=Math.max(0,e.clientX-dx)+'px';panel.style.top=Math.max(0,e.clientY-dy)+'px'});handle.addEventListener('pointerup',()=>drag=false);});
-  const slider=document.getElementById('timeSlider'),timeLabel=document.getElementById('timeLabel');
-  slider.addEventListener('input',()=>{const hours=Number(slider.value),h=Math.floor(hours),m=Math.round((hours-h)*60);timeLabel.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');const d=new Date();d.setHours(h,m,0,0);viewer.clock.currentTime=Cesium.JulianDate.fromDate(d);viewer.clock.shouldAnimate=false;viewer.scene.requestRender()});
-  document.getElementById('modeButton').addEventListener('click',()=>{if(viewer.scene.mode===Cesium.SceneMode.SCENE3D){viewer.scene.morphTo2D(0.7);document.getElementById('mapMode').textContent='2D map'}else{viewer.scene.morphTo3D(0.7);document.getElementById('mapMode').textContent='3D globe'}});
-  const voiceButton=document.getElementById('voiceButton'),voiceText=document.getElementById('voiceText');
-  voiceButton.addEventListener('click',()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){voiceText.textContent='Speech recognition is not supported in this browser.';return}const rec=new SR();rec.lang='en-US';rec.onstart=()=>{voiceButton.textContent='Listening…';voiceText.textContent='Speak now'};rec.onresult=e=>{voiceText.textContent=e.results[0][0].transcript};rec.onerror=()=>{voiceText.textContent='Microphone unavailable'};rec.onend=()=>{voiceButton.textContent='Start voice'};rec.start()});
-  viewer.screenSpaceEventHandler.setInputAction(async movement=>{const cart=viewer.camera.pickEllipsoid(movement.position,viewer.scene.globe.ellipsoid);if(!cart)return;const c=Cesium.Cartographic.fromCartesian(cart),lat=Cesium.Math.toDegrees(c.latitude),lon=Cesium.Math.toDegrees(c.longitude);const pending={type:'routeSelected',lat,lon,label:lat.toFixed(5)+', '+lon.toFixed(5)};if(window.parent&&window.parent!==window)window.parent.postMessage(pending,'*');if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(pending));try{const g=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+lat+'&longitude='+lon+'&localityLanguage=en').then(r=>r.json());const code=String(g.countryCode||'').toLowerCase();const img=code?'<img id="flagImage" src="https://flagcdn.com/w80/'+code+'.png">':'';document.getElementById('flagText').innerHTML=img+(g.countryName||'International waters');const selected={type:'routeSelected',lat,lon,label:g.locality||g.city||g.countryName||'Selected map point'};if(window.parent&&window.parent!==window)window.parent.postMessage(selected,'*');if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(selected))}catch{document.getElementById('flagText').textContent='Location lookup unavailable'}},Cesium.ScreenSpaceEventType.LEFT_CLICK);
+  if(params.has('lat')&&params.has('lon')&&Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180){
+   const position=Cesium.Cartesian3.fromDegrees(lon,lat,0);
+   viewer.entities.add({position,point:{pixelSize:13,color:Cesium.Color.fromCssColorString('#62e6c5'),outlineColor:Cesium.Color.WHITE,outlineWidth:2},label:{text:'Destination',font:'14px sans-serif',fillColor:Cesium.Color.WHITE,showBackground:true}});
+   const cm=params.get('camera')||'free',height=cm==='driver'?12:cm==='chase'?55:1800;
+   viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(lon,lat,height),orientation:{heading:0,pitch:Cesium.Math.toRadians(cm==='driver'?-3:cm==='chase'?-18:-35),roll:0},duration:1.4});
+  }
+  $('baseButtons').addEventListener('click',e=>{const b=e.target.closest('button[data-base]');if(b)makeBase(b.dataset.base)});
+  $('terrainButtons').addEventListener('click',e=>{const b=e.target.closest('button[data-terrain]');if(b)setTerrain(b.dataset.terrain)});
+  $('weatherButtons').addEventListener('click',e=>{const b=e.target.closest('button[data-weather]');if(b)setWeather(b.dataset.weather)});
+  $('opacity').addEventListener('input',e=>{weatherAlpha=Number(e.target.value)/100;$('opacityValue').textContent=e.target.value+'%';if(weatherLayer)weatherLayer.alpha=weatherAlpha;viewer.scene.requestRender()});
+  $('homeBtn').onclick=globalView;$('resetBtn').onclick=globalView;
+  $('freeBtn').onclick=()=>{viewer.trackedEntity=undefined;viewer.scene.screenSpaceCameraController.enableRotate=true;viewer.scene.screenSpaceCameraController.enableZoom=true;setStatus('Free camera · drag to rotate · scroll to zoom')};
+  $('modeBtn').onclick=()=>{if(viewer.scene.mode===Cesium.SceneMode.SCENE3D)viewer.scene.morphTo2D(.8);else viewer.scene.morphTo3D(.8)};
+  viewer.screenSpaceEventHandler.setInputAction(async movement=>{
+   const cart=viewer.camera.pickEllipsoid(movement.position,viewer.scene.globe.ellipsoid);if(!cart)return;
+   const c=Cesium.Cartographic.fromCartesian(cart);if(!c||!Number.isFinite(c.latitude)||!Number.isFinite(c.longitude))return;
+   const lat=Cesium.Math.toDegrees(c.latitude),lon=Cesium.Math.toDegrees(c.longitude);
+   const selected={type:'routeSelected',lat,lon,label:lat.toFixed(5)+', '+lon.toFixed(5)};
+   if(window.parent&&window.parent!==window)window.parent.postMessage(selected,'*');
+   if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(selected));
+   try{const g=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+lat+'&longitude='+lon+'&localityLanguage=en').then(r=>r.json());selected.label=g.locality||g.city||g.countryName||selected.label;$('status').textContent='Selected · '+selected.label;if(window.parent&&window.parent!==window)window.parent.postMessage(selected,'*');if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage(JSON.stringify(selected))}catch(e){console.warn('Reverse geocode unavailable',e)}
+  },Cesium.ScreenSpaceEventType.LEFT_CLICK);
+  setStatus('Cesium Earth ready · '+(ionToken?'Cesium imagery and terrain available':'add CESIUM_ION_TOKEN for Cesium ion imagery and World Terrain'));
   window.pinDriveViewer=viewer;
- }catch(e){status.textContent='Cesium error: '+e.message;console.error(e)}
+ }catch(e){console.error('Cesium initialization failed',e);setStatus('Cesium error: '+(e?.message||String(e)))}
 })();
 </script></body></html>
