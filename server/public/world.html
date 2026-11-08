@@ -22,11 +22,15 @@ input[type=range]{width:100%;accent-color:#62e6c5}
 <aside id="earthPanel">
  <div class="group"><div class="heading">CESIUM BASEMAP</div><div class="buttons" id="baseButtons">
   <button data-base="aerial" class="active">Satellite</button><button data-base="aerial-labels">Satellite + labels</button>
-  <button data-base="road">Road map</button><button data-base="osm">OpenStreetMap</button>
-  <button data-base="arcgis">ArcGIS imagery</button><button data-base="none">No imagery</button>
+  <button data-base="road">Cesium roads</button><button data-base="osm">OpenStreetMap</button>
+  <button data-base="arcgis">Esri satellite</button><button data-base="esri-streets">Esri streets</button>
+  <button data-base="topographic">Topographic</button><button data-base="natgeo">National Geographic</button>
+  <button data-base="ocean">Ocean</button><button data-base="hillshade">Hillshade</button>
+  <button data-base="voyager">CARTO Voyager</button><button data-base="positron">CARTO Light</button>
+  <button data-base="dark">CARTO Dark</button><button data-base="opentopo">OpenTopoMap</button><button data-base="grid">Grid</button><button data-base="coordinates">Coordinates</button><button data-base="none">No imagery</button>
  </div><div class="small">Cesium ion imagery uses your CESIUM_ION_TOKEN. OpenStreetMap and ArcGIS are fallback providers.</div></div>
  <div class="group"><div class="heading">TERRAIN</div><div class="buttons" id="terrainButtons">
-  <button data-terrain="world" class="active">Cesium World Terrain</button><button data-terrain="ellipsoid">Ellipsoid</button>
+  <button data-terrain="world" class="active">Cesium World Terrain</button><button data-terrain="arcgis">ArcGIS World Elevation</button><button data-terrain="ellipsoid">Ellipsoid · no relief</button>
  </div></div>
  <div class="group"><div class="heading">OPENWEATHER LAYERS</div><div class="buttons" id="weatherButtons">
   <button data-weather="none" class="active">Off</button><button data-weather="clouds">Clouds</button>
@@ -46,7 +50,22 @@ input[type=range]{width:100%;accent-color:#62e6c5}
  const styleButtons=(root,attr,value)=>root.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset[attr]===value));
  const ionReady=()=>Boolean(ionToken);
  const fallbackProvider=kind=>{
-  if(kind==='arcgis')return new Cesium.ArcGisMapServerImageryProvider({url:'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'});
+  const templates={
+  'esri-streets':['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}','Esri World Street Map'],
+  topographic:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}','Esri World Topographic'],
+  natgeo:['https://services.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}','National Geographic'],
+  ocean:['https://services.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}','World Ocean'],
+  hillshade:['https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}','World Hillshade'],
+  voyager:['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png','CARTO Voyager'],
+  positron:['https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png','CARTO Light'],
+  dark:['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png','CARTO Dark'],
+  opentopo:['https://a.tile.opentopomap.org/{z}/{x}/{y}.png','OpenTopoMap'],
+  arcgis:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}','Esri World Imagery']
+ };
+ if(templates[kind])return new Cesium.UrlTemplateImageryProvider({url:templates[kind][0],credit:templates[kind][1],maximumLevel:19});
+ if(kind==='grid')return new Cesium.GridImageryProvider({});
+ if(kind==='coordinates')return new Cesium.TileCoordinatesImageryProvider({});
+
   if(kind==='osm')return new Cesium.UrlTemplateImageryProvider({url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',credit:'© OpenStreetMap contributors',maximumLevel:19});
   return new Cesium.UrlTemplateImageryProvider({url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',credit:'© OpenStreetMap contributors',maximumLevel:19});
  };
