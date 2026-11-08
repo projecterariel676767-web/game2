@@ -12,7 +12,10 @@ button{background:#132e43;border:1px solid #31536a;color:#eaf7fb;border-radius:8
 button.active{background:#15504b;border-color:#62e6c5;color:#fff;box-shadow:0 0 12px #62e6c533}
 label{display:flex;justify-content:space-between;font-size:11px;color:#c8d9e7;margin:8px 0 5px}
 input[type=range]{width:100%;accent-color:#62e6c5}
-.small{font-size:10px;color:#8fa9bd;line-height:1.45;margin-top:5px}\n.cesium-viewer-timelineContainer{height:34px!important;bottom:0!important}\n.cesium-viewer-animationContainer{bottom:35px!important}\n.cesium-viewer-bottom{bottom:35px!important}
+.small{font-size:10px;color:#8fa9bd;line-height:1.45;margin-top:5px}
+.cesium-viewer-timelineContainer{height:34px!important;bottom:0!important}
+.cesium-viewer-animationContainer{bottom:35px!important}
+.cesium-viewer-bottom{bottom:35px!important}
 #mapTools{position:absolute;z-index:10;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 #worldPills{position:absolute;z-index:30;left:50%;bottom:48px;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(96%,720px);pointer-events:auto}
 .world-pill{border:1px solid #355b72;background:rgba(5,19,31,.92);color:#eaf7fb;border-radius:22px;padding:10px 15px;font-size:12px;font-weight:800;box-shadow:0 5px 18px #0008;backdrop-filter:blur(10px)}
@@ -92,8 +95,8 @@ input[type=range]{width:100%;accent-color:#62e6c5}
   document.querySelectorAll('.float-panel').forEach(p=>p.classList.toggle('open',p.id===id&&!p.classList.contains('open')));
   document.querySelectorAll('.world-pill').forEach(b=>b.classList.toggle('active',document.getElementById(b.dataset.open)?.classList.contains('open')));
   if(id==='mapPanel'&&document.getElementById(id).classList.contains('open'))setTimeout(initMiniMap,120);
-  if(id==='voicePanel'&&document.getElementById(id).classList.contains('open'))setVoiceListening(true);
-  if(id!=='voicePanel'&&voiceListening)setVoiceListening(false);
+  if(id==='voicePanel')setVoiceListening(document.getElementById(id).classList.contains('open'));
+  else if(voiceListening)setVoiceListening(false);
  }
  function makeDraggable(panel){
   const head=panel.querySelector('.float-head');let drag=null;
@@ -130,10 +133,10 @@ input[type=range]{width:100%;accent-color:#62e6c5}
    if(!/^[a-z]{2}$/.test(code))throw new Error('No country at current coordinates');
    const url='https://flagcdn.com/w160/'+code+'.png';
    const image=new Image();image.crossOrigin='anonymous';image.onload=()=>{
-    const position=new Cesium.CallbackProperty(()=>vehiclePosition?Cesium.Cartesian3.add(vehiclePosition,Cesium.Cartesian3.multiplyByScalar(Cesium.Cartesian3.normalize(vehiclePosition,new Cesium.Cartesian3()),5,new Cesium.Cartesian3()),new Cesium.Cartesian3()):Cesium.Cartesian3.fromDegrees(playerLon,playerLat,8),false);
+    const position=new Cesium.CallbackProperty(()=>vehiclePosition?Cesium.Cartesian3.add(vehiclePosition,Cesium.Cartesian3.multiplyByScalar(Cesium.Cartesian3.normalize(vehiclePosition,new Cesium.Cartesian3()),1.3,new Cesium.Cartesian3()),new Cesium.Cartesian3()):Cesium.Cartesian3.fromDegrees(playerLon,playerLat,8),false);
     if(flagBillboard)viewer.entities.remove(flagBillboard);if(flagPole)viewer.entities.remove(flagPole);
-    flagPole=viewer.entities.add({position, cylinder:{length:5,topRadius:.035,bottomRadius:.035,material:Cesium.Color.fromCssColorString('#c7d3dc')}});
-    const cloth=document.createElement('canvas');cloth.width=192;cloth.height=120;const ctx=cloth.getContext('2d');
+    flagPole=viewer.entities.add({position, cylinder:{length:1.6,topRadius:.025,bottomRadius:.025,material:Cesium.Color.fromCssColorString('#c7d3dc')}});
+    const cloth=document.createElement('canvas');cloth.width=160;cloth.height=100;const ctx=cloth.getContext('2d');
     let phase=0;
     const drawFlag=()=>{
      if(!ctx)return;phase+=.12;ctx.clearRect(0,0,cloth.width,cloth.height);
