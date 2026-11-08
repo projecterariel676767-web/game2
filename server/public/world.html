@@ -13,9 +13,9 @@ button.active{background:#15504b;border-color:#62e6c5;color:#fff;box-shadow:0 0 
 label{display:flex;justify-content:space-between;font-size:11px;color:#c8d9e7;margin:8px 0 5px}
 input[type=range]{width:100%;accent-color:#62e6c5}
 .small{font-size:10px;color:#8fa9bd;line-height:1.45;margin-top:5px}
-#mapTools{position:absolute;z-index:10;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+#mapTools{position:absolute;z-index:10;right:12px;bottom:14px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 #mapTools button{background:#071824eF}
-@media(max-width:600px){#earthPanel{top:54px;bottom:auto;left:10px;width:min(270px,calc(100vw - 20px));max-height:calc(100% - 66px);padding:10px}#status{top:8px;left:8px;font-size:10px}#mapTools{top:8px;right:8px}button{padding:7px 6px}}
+@media(max-width:600px){#earthPanel{top:54px;bottom:auto;left:10px;width:min(270px,calc(100vw - 20px));max-height:calc(100% - 66px);padding:10px}#status{top:8px;left:8px;font-size:10px}#mapTools{bottom:8px;right:8px}button{padding:7px 6px}}
 </style></head><body>
 <div id="cesiumContainer"></div><div id="status">Starting Cesium…</div>
 <div id="mapTools"><button id="homeBtn">🌍 Global view</button><button id="modeBtn">2D / 3D</button><button id="panelBtn">Cesium layers ▾</button></div>
