@@ -36,11 +36,9 @@
   const lat=Number(params.get('lat')),lon=Number(params.get('lon'));
   if(Number.isFinite(lat)&&Number.isFinite(lon)){
    viewer.entities.add({position:Cesium.Cartesian3.fromDegrees(lon,lat,0),point:{pixelSize:13,color:Cesium.Color.fromCssColorString('#62e6c5'),outlineColor:Cesium.Color.WHITE,outlineWidth:2},label:{text:'Destination',font:'14px sans-serif',fillColor:Cesium.Color.WHITE,showBackground:true}});
-   viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(lon,lat,Number(params.get('camera')==='driver'?900:45000))});
+   const cameraMode=params.get('camera')||'free';const cameraHeight=cameraMode==='driver'?8:(cameraMode==='chase'?45:1800);viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(lon,lat,cameraHeight),orientation:{heading:0,pitch:Cesium.Math.toRadians(cameraMode==='driver'?-4:(cameraMode==='chase'?-18:-35)),roll:0}});
   }else viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(-74.5,40.2,1800000)});
-  if(params.get('camera')==='driver'&&Number.isFinite(lat)&&Number.isFinite(lon)){
-   viewer.camera.setView({destination:Cesium.Cartesian3.fromDegrees(lon,lat,6),orientation:{heading:0,pitch:Cesium.Math.toRadians(-5),roll:0}});
-  }
+  
   status.textContent='Cesium ready · drag to orbit · wheel to zoom'+(cfg.cesiumIonToken?' · terrain & buildings':' · add CESIUM_ION_TOKEN for terrain');
   // Four movable HUD panels: Time, Voice, Map and Flag.
   document.querySelectorAll('.hud').forEach(panel=>{const handle=panel.querySelector('header');let dx=0,dy=0,drag=false;handle.addEventListener('pointerdown',e=>{drag=true;const r=panel.getBoundingClientRect();dx=e.clientX-r.left;dy=e.clientY-r.top;handle.setPointerCapture(e.pointerId)});handle.addEventListener('pointermove',e=>{if(!drag)return;panel.style.left=Math.max(0,e.clientX-dx)+'px';panel.style.top=Math.max(0,e.clientY-dy)+'px'});handle.addEventListener('pointerup',()=>drag=false);});
