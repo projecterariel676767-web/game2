@@ -120,6 +120,7 @@ app.get('/api/geocode', async (req, res) => {
 });
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+app.use('/preview', express.static(path.join(here, '../../mobile/dist')));
 app.use('/preview', express.static(path.join(here, '../public')));
 app.get('/preview', (_req, res) => res.sendFile(path.join(here, '../public/preview.html')));
 app.get('/', (_req, res) => res.redirect('/preview'));
