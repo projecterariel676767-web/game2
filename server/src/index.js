@@ -13,9 +13,14 @@ import { register, login, requireAuth } from './auth.js';
 const app = express();
 const audioUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: process.env.CLIENT_ORIGIN || '*', methods: ['GET','POST'] } });
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*'}));
+const corsOptions = { origin: true, methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'], optionsSuccessStatus: 204 };
+const io = new Server(server, { cors: corsOptions });
+// Reflect the requesting web origin (no cookies/credentials are used by this API).
+// This avoids stale CLIENT_ORIGIN settings blocking the /preview host.
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'pin-drive', database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' }));
 app.post('/api/auth/register', register);
