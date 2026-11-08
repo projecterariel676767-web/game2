@@ -72,7 +72,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
 <script>
 (async()=>{
  const $=id=>document.getElementById(id),status=$('status'),params=new URLSearchParams(location.search);
- let viewer,vehiclePrimitive=null,buildingRelief=[],weatherLayer=null,currentBase='aerial',currentTerrain='world',currentWeather='none',weatherAlpha=Math.max(0,Math.min(1,Number(params.get('opacity')||.85))),ionToken='',apiBase=(params.get('apiBase')||location.origin).replace(/\\/$/,'');
+ let viewer,vehiclePrimitive=null,buildingRelief=[],weatherLayer=null,currentBase='aerial',currentTerrain='world',currentWeather='none',weatherAlpha=Math.max(0,Math.min(1,Number(params.get('opacity')||.85))),ionToken='',apiBase=(params.get('apiBase')||location.origin).replace(/\/$/,'');
  let hasPlayerPosition=params.has('lat')&&params.has('lon')&&Number.isFinite(Number(params.get('lat')))&&Number.isFinite(Number(params.get('lon'))),playerLat=Number(params.get('lat'))||0,playerLon=Number(params.get('lon'))||0,vehiclePosition=null,flagBillboard=null,flagPole=null,mapViewer=null,voiceSocket=null,voiceRecorder=null,voiceStream=null,voiceChunks=[],voiceListening=false,localMinutes=720,timeTouched=false;
  const pad=n=>String(n).padStart(2,'0');
  function updateLocalClock(){
