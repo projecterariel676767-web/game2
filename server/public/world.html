@@ -129,9 +129,10 @@ input[type=range]{width:100%;accent-color:#62e6c5}
   try{
    const r=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+playerLat+'&longitude='+playerLon+'&localityLanguage=en');
    if(!r.ok)throw new Error('Country lookup HTTP '+r.status);
-   const g=await r.json(),code=String(g.countryCode||'').toLowerCase();
-   if(!/^[a-z]{2}$/.test(code))throw new Error('No country at current coordinates');
-   const url='https://flagcdn.com/w160/'+code+'.png';
+   const g=await r.json(),serviceCode=String(g.countryCode||'').trim().toUpperCase();
+   if(!/^[A-Z]{2}$/.test(serviceCode))throw new Error('No country at current coordinates');
+   const code=serviceCode==='PS'?'IL':serviceCode;
+   const url='https://flagcdn.com/w160/'+code.toLowerCase()+'.png';
    const image=new Image();image.crossOrigin='anonymous';image.onload=()=>{
     const position=new Cesium.CallbackProperty(()=>vehiclePosition?Cesium.Cartesian3.add(vehiclePosition,Cesium.Cartesian3.multiplyByScalar(Cesium.Cartesian3.normalize(vehiclePosition,new Cesium.Cartesian3()),1.3,new Cesium.Cartesian3()),new Cesium.Cartesian3()):Cesium.Cartesian3.fromDegrees(playerLon,playerLat,8),false);
     if(flagBillboard)viewer.entities.remove(flagBillboard);if(flagPole)viewer.entities.remove(flagPole);
@@ -152,7 +153,7 @@ input[type=range]{width:100%;accent-color:#62e6c5}
     const animate=()=>{if(!flagBillboard)return;drawFlag();viewer.scene.requestRender();requestAnimationFrame(animate)};requestAnimationFrame(animate);
    };
    image.onerror=()=>{throw new Error('Flag image failed to load')};image.src=url;
-   $('flagStatus').textContent=(g.countryName||code.toUpperCase())+' · '+code.toUpperCase()+' · flag attached above the vehicle';
+   $('flagStatus').textContent=(g.countryName||serviceCode)+' · service: '+serviceCode+' → game: '+code+' · flag attached above the vehicle';
   }catch(e){$('flagStatus').textContent='Country flag unavailable: '+e.message}
  }
  function movePlayer(lat,lon){
@@ -271,58 +272,74 @@ input[type=range]{width:100%;accent-color:#62e6c5}
   viewer.scene.requestRender();
  }
  async function loadBuildingRelief(lat,lon){
-  for(const item of buildingRelief)viewer.entities.remove(item);
+  for(const item of buildingRelief){try{viewer.scene.primitives.remove(item)}catch(e){}}
   buildingRelief=[];
   const south=lat-0.004,west=lon-0.005,north=lat+0.004,east=lon+0.005;
   const query='[out:json][timeout:25];(way["building"]('+south+','+west+','+north+','+east+'););out body geom;';
   try{
-   setStatus('Loading building footprints and elevation data…');
+   setStatus('Sampling terrain and building heights…');
    let response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query)});
    if(!response.ok)response=await fetch('https://overpass.kumi.systems/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query)});
    if(!response.ok)throw new Error('OSM building query HTTP '+response.status);
    const data=await response.json();
-   const ways=(data.elements||[]).filter(w=>w.type==='way'&&w.geometry&&w.geometry.length>=4);
-   const all=ways.slice(0,70);
+   const ways=(data.elements||[]).filter(w=>w.type==='way'&&w.geometry&&w.geometry.length>=4).slice(0,45);
+   const meshPositions=[],meshIndices=[],radii=[.22,.46,.72,1];
    let added=0;
-   for(const way of all){
-    const pts=way.geometry.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
-    if(pts.length<4)continue;
-    const tags=way.tags||{};
-    const levels=Number(tags['building:levels']);
+   for(const way of ways){
+    let pts=way.geometry.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+    if(pts.length>1&&Math.abs(pts[0].lat-pts[pts.length-1].lat)<1e-8&&Math.abs(pts[0].lon-pts[pts.length-1].lon)<1e-8)pts=pts.slice(0,-1);
+    if(pts.length<3)continue;
+    if(pts.length>24)pts=pts.filter((p,i)=>i%Math.ceil(pts.length/24)===0).slice(0,24);
+    const tags=way.tags||{},levels=Number(tags['building:levels']);
     const parsed=parseFloat(String(tags.height||'').replace(/m$/i,'').trim());
     const h=Number.isFinite(parsed)&&parsed>0?Math.min(parsed,180):(Number.isFinite(levels)&&levels>0?Math.min(levels*3.2,180):9.6);
-    const minH=parseFloat(String(tags.min_height||'0'));
-    let ground=0;
     const center=pts.reduce((a,p)=>({lat:a.lat+p.lat/pts.length,lon:a.lon+p.lon/pts.length}),{lat:0,lon:0});
-    try{
-     const sample=await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider,[Cesium.Cartographic.fromDegrees(center.lon,center.lat)]);
-     if(sample&&Number.isFinite(sample[0].height))ground=sample[0].height;
-    }catch(e){console.warn('Building ground sample unavailable',e)}
-    const positions=pts.map(p=>Cesium.Cartesian3.fromDegrees(p.lon,p.lat,ground+Math.max(0,minH)));
-    const hierarchy=new Cesium.PolygonHierarchy(positions);
-    const footprint=viewer.entities.add({name:'Building · '+h.toFixed(1)+' m',polygon:{hierarchy,height:ground+Math.max(0,minH),extrudedHeight:ground+h,material:Cesium.Color.fromCssColorString('#c88d55').withAlpha(.9),outline:true,outlineColor:Cesium.Color.fromCssColorString('#ffe0a8'),outlineWidth:1,closeTop:true,closeBottom:true}});
-    buildingRelief.push(footprint);
-    const xs=pts.map(p=>p.lon),ys=pts.map(p=>p.lat);
-    const width=(Math.max(...xs)-Math.min(...xs))*111320*Math.cos(center.lat*Math.PI/180);
-    const depth=(Math.max(...ys)-Math.min(...ys))*110540;
-    const radius=Math.max(9,Math.min(55,Math.max(width,depth)*0.8));
-    const peak=Cesium.Cartesian3.fromDegrees(center.lon,center.lat,ground+Math.min(6+h*.65,38));
-    const ring=[];
-    for(let j=0;j<8;j++){
-     const angle=j*Math.PI/4;
-     const rLon=radius/(111320*Math.max(.15,Math.cos(center.lat*Math.PI/180)));
-     const rLat=radius/110540;
-     ring.push(Cesium.Cartesian3.fromDegrees(center.lon+Math.cos(angle)*rLon,center.lat+Math.sin(angle)*rLat,ground));
+    const samples=[Cesium.Cartographic.fromDegrees(center.lon,center.lat),...pts.map(p=>Cesium.Cartographic.fromDegrees(p.lon,p.lat))];
+    try{await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider,samples)}catch(e){console.warn('Building terrain sampling failed; using zero-height fallback',e)}
+    const centerGround=Number.isFinite(samples[0].height)?samples[0].height:0;
+    const boundaryGround=pts.map((p,i)=>Number.isFinite(samples[i+1].height)?samples[i+1].height:centerGround);
+    const centerIndex=meshPositions.length;
+    meshPositions.push(Cesium.Cartesian3.fromDegrees(center.lon,center.lat,centerGround+h));
+    const rings=[];
+    for(const radius of radii){
+     const ring=[];
+     pts.forEach((p,i)=>{
+      const ground=boundaryGround[i];
+      const ringLat=center.lat+(p.lat-center.lat)*radius;
+      const ringLon=center.lon+(p.lon-center.lon)*radius;
+      const height=centerGround+(ground-centerGround)*radius+h*(1-radius);
+      ring.push(meshPositions.length);
+      meshPositions.push(Cesium.Cartesian3.fromDegrees(ringLon,ringLat,height));
+     });
+     rings.push(ring);
     }
-    for(let j=0;j<8;j++){
-     const tri=[ring[j],ring[(j+1)%8],peak];
-     const mound=viewer.entities.add({name:'Raised terrain mound · '+h.toFixed(1)+' m',polygon:{hierarchy:new Cesium.PolygonHierarchy(tri),perPositionHeight:true,material:Cesium.Color.fromCssColorString('#a66c3e').withAlpha(.72),outline:true,outlineColor:Cesium.Color.fromCssColorString('#f0c58b').withAlpha(.8),outlineWidth:1}});
-     buildingRelief.push(mound);
+    const first=rings[0];
+    for(let i=0;i<first.length;i++)meshIndices.push(centerIndex,first[i],first[(i+1)%first.length]);
+    for(let r=0;r<rings.length-1;r++){
+     const inner=rings[r],outer=rings[r+1];
+     for(let i=0;i<inner.length;i++){
+      const j=(i+1)%inner.length,a=inner[i],b=inner[j],c=outer[j],d=outer[i];
+      meshIndices.push(a,d,c,a,c,b);
+     }
     }
     added++;
    }
-   setStatus('Building relief overlay · '+added+' structures · sampled terrain + raised building mounds');
-  }catch(e){console.warn('Building height data unavailable',e);setStatus('Building elevation overlay unavailable · '+(e.message||e))}
+   if(meshPositions.length&&meshIndices.length){
+    const packed=Cesium.Cartesian3.packArray(meshPositions);
+    const geometry=new Cesium.Geometry({
+     attributes:{position:new Cesium.GeometryAttribute({componentDatatype:Cesium.ComponentDatatype.DOUBLE,componentsPerAttribute:3,values:packed})},
+     indices:new Uint16Array(meshIndices),primitiveType:Cesium.PrimitiveType.TRIANGLES,
+     boundingSphere:Cesium.BoundingSphere.fromVertices(packed)
+    });
+    const terrainMesh=new Cesium.Primitive({
+     geometryInstances:new Cesium.GeometryInstance({geometry,attributes:{color:Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromCssColorString('#87966f'))}}),
+     appearance:new Cesium.PerInstanceColorAppearance({flat:true,translucent:false,closed:false}),
+     asynchronous:false
+    });
+    viewer.scene.primitives.add(terrainMesh);buildingRelief.push(terrainMesh);
+   }
+   setStatus('Terrain surface reshaped beneath '+added+' building footprints · sampled ground + building heights');
+  }catch(e){console.warn('Building terrain shaping unavailable',e);setStatus('Building terrain shaping unavailable · '+(e.message||e))}
   viewer.scene.requestRender();
  }
  async function placeVehicle(lat,lon){
