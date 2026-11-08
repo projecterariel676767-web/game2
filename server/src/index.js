@@ -64,7 +64,7 @@ app.post('/api/ai/message', requireAuth, async (req, res) => {
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', headers: { Authorization: 'Bearer ' + process.env.GROQ_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: 'You are Pin Drive AI, a helpful driving-world assistant. Be clear and safety-conscious.' }, { role: 'user', content }], temperature: 0.7 })
+      body: JSON.stringify({ model: 'openai/gpt-oss-120b', messages: [{ role: 'system', content: 'You are Pin Drive AI, a helpful driving-world assistant. Be clear and safety-conscious.' }, { role: 'user', content }], temperature: 0.7 })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error?.message || 'AI provider error');
@@ -86,6 +86,7 @@ app.post('/api/ai/image', requireAuth, async (req, res) => {
     const image = data.result?.image;
     if (!image) throw new Error('Image provider returned no image.');
     await AIMessage.create({ userId: req.user.id, role: 'user', content: '[Image request] ' + prompt });
+    await AIMessage.create({ userId: req.user.id, role: 'assistant', content: '[Image generated] ' + prompt });
     res.json({ image: 'data:image/png;base64,' + image });
   } catch (error) { res.status(502).json({ error: error.message }); }
 });
